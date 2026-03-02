@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <title>MiMi</title>
+    <link rel="stylesheet" href="./style.css">
+
+  </head>
+    
+  <body>
+  <!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>mimi的小手机</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  
+  <!-- 苹果专属全屏标签 -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="mimi的小手机" />
+  
+  <!-- 关联你的图标和刚才新建的配置文件 -->
+  <link rel="apple-touch-icon" href="icon.png" />
+  <link rel="manifest" href="manifest.json" />
+
+  <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+  <body>
+  <div class="app-shell">
+
+    <!-- 顶部状态栏 -->
+    <header class="status-bar glass-card" id="sys-status-bar">
+      <div class="status-left"><span class="status-time" id="status-time">12:00</span></div>
+      <div class="status-center"><span class="status-title">…𝗱𝗼𝗻'𝘁 𝗮𝘀𝗸 (⸝⸝•̀⸝⸝•́⸝⸝)˚. ˚˛ ♡</span></div>
+      <div class="status-right">
+        <svg viewBox="0 0 24 24" class="icon" style="width:20px;height:20px;"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+      </div>
+    </header>
+
+    <!-- 主内容区域 -->
+    <main class="main-view">
+
+      <!-- ================= 首页 (Home) ================= -->
+      <section class="view view-home" data-view="home">
+        <div class="screen-sticker" id="home-sticker" style="display:none;"></div>
+        <div class="home-pager">
+          <section class="home-page">
+            <div class="home-top-row">
+              <div class="card-large avatar-card sys-card">
+                <input type="file" id="inp-avatar" accept="image/*" style="display:none;" />
+                <div class="avatar-big" id="user-avatar-disp" onclick="document.getElementById('inp-avatar').click()" title="点击更换头像"></div>
+              </div>
+              <div class="card-large info-card sys-card" id="widget-info">
+                <div class="info-title" contenteditable="true" id="edit-user-name" spellcheck="false">ひげとしっぽ</div>
+                <div class="info-sub" contenteditable="true" id="edit-user-sign" spellcheck="false">3月1日 · 周日 · 广州</div>
+                <div class="info-time" id="home-clock">04:05</div>
+              </div>
+            </div>
+
+            <div class="home-grid">
+              <div class="card-medium sys-card" id="widget-wallet">
+                <div class="widget-header-mini" contenteditable="true" id="edit-wallet-title" spellcheck="false">我的钱包</div>
+                <div class="wallet-balance" contenteditable="true" id="edit-wallet-val" spellcheck="false">¥ 0.00</div>
+              </div>
+              
+              <div class="card-medium app-grid sys-card">
+                <button class="app-icon-button" data-jump="chat">
+                  <div class="app-icon-square" id="icon-chat"><svg viewBox="0 0 24 24" class="app-icon-svg default-svg"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></div>
+                  <span class="app-icon-label">Chat</span>
+                </button>
+                <button class="app-icon-button" data-jump="worldbook">
+                  <div class="app-icon-square" id="icon-worldbook"><svg viewBox="0 0 24 24" class="app-icon-svg default-svg"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H9V9h10v2zm-4 4H9v-2h6v2zm4-8H9V5h10v2z"/></svg></div>
+                  <span class="app-icon-label">世界书</span>
+                </button>
+                <button class="app-icon-button" data-jump="forum">
+                  <div class="app-icon-square" id="icon-forum"><svg viewBox="0 0 24 24" class="app-icon-svg default-svg"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm6.93 6h-2.95c-.32-1.25-.78-2.45-1.38-3.56 1.84.63 3.37 1.91 4.33 3.56zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96zM4.26 14C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2s.06 1.34.14 2H4.26zm.82 2h2.95c.32 1.25.78 2.45 1.38 3.56-1.84-.63-3.37-1.9-4.33-3.56zm2.95-8H5.08c.96-1.66 2.49-2.93 4.33-3.56C8.81 5.55 8.35 6.75 8.03 8zM12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96zM14.34 14H9.66c-.09-.66-.16-1.32-.16-2s.07-1.35.16-2h4.68c.09.65.16 1.32.16 2s-.07 1.34-.16 2zm.25 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95c-.96 1.65-2.49 2.93-4.33 3.56zM16.36 14c.08-.66.14-1.32.14-2s-.06-1.34-.14-2h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2h-3.38z"/></svg></div>
+                  <span class="app-icon-label">论坛</span>
+                </button>
+                <button class="app-icon-button" data-jump="settings">
+                  <div class="app-icon-square" id="icon-settings"><svg viewBox="0 0 24 24" class="app-icon-svg default-svg"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg></div>
+                  <span class="app-icon-label">设置</span>
+                </button>
+              </div>
+
+              <!-- 🎵 横向真实音乐播放器 -->
+              <div class="card-large music-card sys-card card-clickable" id="widget-music" style="grid-column: span 2;" onclick="showMusicModal()">
+                <div class="music-player-layout">
+                  <div class="music-disc" id="music-cover-disp"></div>
+                  <div class="music-info-box">
+                    <div class="music-title" id="music-title-disp">暂无音乐</div>
+                    <div class="music-artist" id="music-artist-disp">点击设置导入</div>
+                  </div>
+                  <button class="icon-button play-btn" id="btn-play-pause" onclick="event.stopPropagation(); toggleMusicPlay();">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                  </button>
+                </div>
+                <audio id="sys-audio-player" style="display:none;"></audio>
+              </div>
+            </div>
+          </section>
+          
+          <!-- 第 2 屏 -->
+          <section class="home-page">
+            <div class="home-page-title">第二屏 · 组件</div>
+            <div class="home-grid-widgets">
+              <div class="widget-box sys-card card-clickable" id="widget-anni" onclick="showAnniModal()">
+                <div class="widget-top">
+                  <span class="widget-name" id="edit-anni-title">纪念日</span>
+                  <svg viewBox="0 0 24 24" class="widget-icon"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                </div>
+                <div class="widget-center">
+                  <div class="d-day-label">距离目标日</div>
+                  <div class="d-day-number"><span id="anni-days">0</span><span class="d-day-unit">天</span></div>
+                </div>
+                <div class="widget-bottom" id="anni-date-btn">点击设置日期</div>
+              </div>
+
+              <div class="widget-box sys-card" id="widget-todo">
+                <div class="widget-top">
+                  <span class="widget-name" contenteditable="true" id="edit-todo-title" spellcheck="false">待办事项</span>
+                  <button class="widget-add-btn" id="add-todo-btn">＋</button>
+                </div>
+                <div class="widget-todo-content"><ul class="todo-list" id="todo-list"></ul></div>
+              </div>
+            </div>
+          </section>
+        </div>
+        <div class="pager-dots" id="pager-dots"><span class="dot active"></span><span class="dot"></span></div>
+      </section>
+
+      <!-- ================= 聊天应用主界面 ================= -->
+      <section class="view view-chat hidden" data-view="chat">
+        <div class="chat-tab-content active" id="chat-tab-msg">
+          <header class="sub-header">
+            <button class="back-btn" data-back="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+            <h2>消息</h2>
+            <div style="position:relative;">
+              <button class="icon-button" id="btn-chat-add">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              </button>
+              <div class="chat-add-menu hidden glass-card sys-card" id="chat-add-menu">
+                <button onclick="showAddCharModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> 添加新人设</button>
+                <button onclick="showAddGroupModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg> 发起群聊</button>
+                <button onclick="document.getElementById('inp-import-char').click()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> 导入角色卡</button>
+                <input type="file" id="inp-import-char" accept=".json" style="display:none;" />
+              </div>
+            </div>
+          </header>
+          <div class="sub-body" style="padding: 0 10px 80px;">
+            <div class="chat-search-bar"><input type="text" class="sys-input" id="chat-search-input" placeholder="搜索联系人或聊天记录..." /></div>
+            <div class="chat-list" id="chat-list-container"></div>
+          </div>
+        </div>
+        
+        <!-- 其他 Tab 占位 -->
+        <div class="chat-tab-content hidden" id="chat-tab-contacts"><header class="sub-header"><button class="back-btn" data-back="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><polyline points="15 18 9 12 15 6"></polyline></svg></button><h2>通讯录</h2><div style="width:24px"></div></header><div class="sub-body"><div class="placeholder-card glass-card sys-card">通讯录功能占位</div></div></div>
+        <div class="chat-tab-content hidden" id="chat-tab-moments"><header class="sub-header"><button class="back-btn" data-back="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><polyline points="15 18 9 12 15 6"></polyline></svg></button><h2>朋友圈</h2><div style="width:24px"></div></header><div class="sub-body"><div class="placeholder-card glass-card sys-card">朋友圈功能占位</div></div></div>
+        
+        <!-- “我”的个人主页 (Ins奶油风) -->
+        <div class="chat-tab-content hidden" id="chat-tab-profile">
+          <div class="profile-new-layout">
+            <div class="profile-cover-area" id="profile-cover-disp" onclick="document.getElementById('inp-profile-cover').click()">
+              <div class="profile-status-pill" onclick="event.stopPropagation(); editProfileStatus()">
+                <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                <span id="profile-status-disp">广州</span>
+              </div>
+            </div>
+            <input type="file" id="inp-profile-cover" accept="image/*" style="display:none;" />
+            
+            <div class="profile-card-area">
+              <div class="profile-avatar-container">
+                <div class="profile-avatar-circle" id="profile-avatar-disp" onclick="document.getElementById('inp-profile-avatar').click()"></div>
+                <input type="file" id="inp-profile-avatar" accept="image/*" style="display:none;" />
+              </div>
+              <div class="profile-name-area">
+                <span class="profile-name-text" contenteditable="true" id="profile-name-edit" spellcheck="false">名字</span>
+              </div>
+              <div class="profile-heart-icon">🤍</div>
+              <div class="profile-sign-area" contenteditable="true" id="profile-sign-edit" spellcheck="false">这个人很懒，没有留下任何东西</div>
+              
+              <div class="wallet-card card-clickable" onclick="showWalletModal()" style="width: 100%; margin-top: 10px;">
+                <div class="wallet-left">
+                  <div class="wallet-title">小金库余额 (点击查看明细)</div>
+                  <div class="wallet-amount" id="profile-wallet-val">¥ 0.00</div>
+                </div>
+                <div class="wallet-right">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path></svg>
+                </div>
+              </div>
+
+              <div class="settings-list-panel" style="width: 100%; padding: 20px 0;">
+                <button class="settings-item" data-subview="profile-personas">
+                  <div class="setting-icon-wrap" style="background:#fef0f4;"><svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>
+                  <span class="text">我的面具 (多身份)</span><span class="arrow">›</span>
+                </button>
+                <button class="settings-item" data-subview="profile-favorites">
+                  <div class="setting-icon-wrap" style="background:#fff7ed;"><svg class="setting-icon" style="stroke:#f59e0b;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></div>
+                  <span class="text">我的收藏</span><span class="arrow">›</span>
+                </button>
+                <button class="settings-item" data-subview="profile-gifts">
+                  <div class="setting-icon-wrap" style="background:#f0fdf4;"><svg class="setting-icon" style="stroke:#10b981;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 12 20 22 4 22 4 12"></polyline><rect x="2" y="7" width="20" height="5"></rect><line x1="12" y1="22" x2="12" y2="7"></line><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg></div>
+                  <span class="text">礼物箱</span><span class="arrow">›</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <nav class="chat-bottom-nav glass-card sys-card">
+          <button class="chat-nav-item active" data-chattab="chat-tab-msg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg><span>消息</span></button>
+          <button class="chat-nav-item" data-chattab="chat-tab-contacts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg><span>通讯录</span></button>
+          <button class="chat-nav-item" data-chattab="chat-tab-moments"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4l3 3"></path></svg><span>朋友圈</span></button>
+          <button class="chat-nav-item" data-chattab="chat-tab-profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span>我</span></button>
+        </nav>
+      </section>
+
+      <!-- ================= 具体的聊天房间 ================= -->
+      <section class="view view-chat-room hidden" data-view="chat-room" id="chat-room-view">
+        <header class="chat-header">
+          <div class="chat-top-bar">
+            <button class="back-btn" data-back="chat" style="justify-self: start;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+            <div class="chat-header-center">
+              <div class="header-status"><span class="status-dot"></span>在线</div>
+              <div class="header-avatars-row">
+                <div class="header-avatar" id="header-ai-avatar"></div>
+                <div class="header-name" id="chat-target-name">AI 助手</div>
+                <div class="header-avatar" id="header-user-avatar"></div>
+              </div>
+              <div class="header-bio" id="chat-target-bio">点击设置修改签名</div>
+            </div>
+            <div class="chat-header-actions">
+              <button class="icon-button" id="btn-inner-voice" title="人物心声">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"></path></svg>
+              </button>
+              <button class="icon-button" id="btn-chat-settings" title="聊天设置">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div class="chat-body" id="chat-messages"></div>
+
+        <!-- 🚨 聊天输入与工具栏 -->
+        <footer class="chat-input-bar" id="chat-input-bar">
+          
+          <!-- 😊 表情包面板 -->
+          <div class="chat-sticker-panel hidden glass-card" id="chat-sticker-panel">
+            <div class="sticker-tabs" id="sticker-tabs"></div>
+            <div class="sticker-list" id="sticker-list"></div>
+            <div class="sticker-actions">
+              <button class="btn-secondary btn-sm" onclick="showStickerManagerModal()">管理表情包</button>
+            </div>
+          </div>
+
+          <!-- ➕ 更多功能面板 -->
+          <div class="chat-extra-menu hidden glass-card sys-card" id="chat-extra-menu">
+            <div class="extra-menu-grid">
+              <div class="extra-item" onclick="showFakePhotoModal()"><div class="extra-icon-soft"><svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg></div><span>拍照</span></div>
+              <div class="extra-item" onclick="showToast('视频通话开发中')"><div class="extra-icon-soft"><svg viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg></div><span>视频通话</span></div>
+              <div class="extra-item" onclick="showToast('语音通话开发中')"><div class="extra-icon-soft"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg></div><span>语音通话</span></div>
+              <div class="extra-item" onclick="showToast('线下模式开发中')"><div class="extra-icon-soft"><svg viewBox="0 0 24 24"><path d="M2 12h4l2-9 5 18 2-9h5"></path></svg></div><span>线下模式</span></div>
+              <div class="extra-item" onclick="showToast('位置开发中')"><div class="extra-icon-soft"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg></div><span>位置</span></div>
+              <div class="extra-item" onclick="showToast('外卖开发中')"><div class="extra-icon-soft"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div><span>外卖</span></div>
+              <div class="extra-item" onclick="showToast('一起听歌开发中')"><div class="extra-icon-soft"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg></div><span>一起听歌</span></div>
+              <div class="extra-item" onclick="showToast('查手机开发中')"><div class="extra-icon-soft"><svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg></div><span>查手机</span></div>
+              <div class="extra-item" onclick="showToast('绑定关系开发中')"><div class="extra-icon-soft"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></div><span>绑定关系</span></div>
+              <div class="extra-item" onclick="showToast('日程表开发中')"><div class="extra-icon-soft"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></div><span>日程表</span></div>
+              <div class="extra-item" onclick="showToast('陪伴开发中')"><div class="extra-icon-soft"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div><span>陪伴</span></div>
+            </div>
+          </div>
+
+          <!-- 🚨 引用预览栏 -->
+          <div id="quote-preview-bar" class="hidden">
+            <div class="quote-preview-content">
+              <span class="quote-preview-label">回复：</span>
+              <span class="quote-preview-text" id="quote-preview-text"></span>
+            </div>
+            <button id="btn-close-quote" class="icon-button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+          </div>
+
+          <!-- 输入行 -->
+          <div class="chat-input-row" id="chat-normal-input-row">
+            <div class="input-pill">
+              <textarea id="chat-input" placeholder="message..." rows="1"></textarea>
+            </div>
+            <button class="chat-regen-btn" id="chat-regen-btn" title="重新生成">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
+            </button>
+            <button class="send-btn-text" id="chat-send-btn">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4l17.45-7.56c.81-.35.81-1.49 0-1.84L3.4 3.44c-.6-.26-1.18.28-.96.89l2.4 6.91c.09.26.32.45.6.48l10.3 1.14c.15.02.15.24 0 .26l-10.3 1.14c-.28.03-.51.22-.6.48l-2.4 6.91c-.22.61.36 1.15.96.89z"/></svg>
+            </button>
+            <button class="send-btn-ai" id="chat-generate-btn" title="让AI回复">
+              <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            </button>
+          </div>
+          <div class="chat-tools-row" id="chat-normal-tools-row">
+            <button class="tool-btn" onclick="showFakeVoiceModal()" title="语音"><svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg></button>
+            <button class="tool-btn" onclick="toggleStickerPanel()" title="表情包"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg></button>
+            <button class="tool-btn" onclick="document.getElementById('inp-send-image').click()" title="图片"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg></button>
+            <input type="file" id="inp-send-image" accept="image/*" style="display:none;" />
+            <button class="tool-btn" onclick="showTransferModal()" title="转账"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></button>
+            <button class="tool-btn" onclick="toggleExtraMenu()" title="更多"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg></button>
+          </div>
+        </footer>
+
+        <!-- 🚨 多选底部操作栏 (默认隐藏) -->
+        <div id="chat-multi-action-bar" class="hidden glass-card">
+          <button class="multi-btn" id="btn-multi-forward"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 17 20 12 15 7"></polyline><path d="M4 18v-2a4 4 0 0 1 4-4h12"></path></svg> 转发</button>
+          <button class="multi-btn danger" id="btn-multi-delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> 删除</button>
+          <button class="multi-btn" id="btn-multi-cancel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> 取消</button>
+        </div>
+
+      </section>
+
+      <!-- ================= 占位页面 ================= -->
+      <section class="view view-worldbook hidden" data-view="worldbook">
+        <header class="sub-header"><button class="back-btn" data-back="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><polyline points="15 18 9 12 15 6"></polyline></svg></button><h2>世界书</h2><div style="width:24px"></div></header>
+        <div class="sub-body"><div class="placeholder-card glass-card">世界书功能占位</div></div>
+      </section>
+      <section class="view view-forum hidden" data-view="forum">
+        <header class="sub-header"><button class="back-btn" data-back="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><polyline points="15 18 9 12 15 6"></polyline></svg></button><h2>论坛</h2><div style="width:24px"></div></header>
+        <div class="sub-body"><div class="placeholder-card glass-card">论坛功能占位</div></div>
+      </section>
+
+      <!-- ================= 设置主列表页 ================= -->
+      <section class="view view-settings hidden" data-view="settings">
+        <header class="settings-header">
+          <div class="settings-title-row">
+            <button class="back-btn" data-back="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+            <h2>全局设置</h2>
+            <div style="width:24px"></div>
+          </div>
+        </header>
+
+        <div class="settings-list-panel">
+          <button class="settings-item" data-subview="settings-api">
+            <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+            <span class="text">API 综合设置</span><span class="arrow">›</span>
+          </button>
+          <button class="settings-item" data-subview="settings-appearance">
+            <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            <span class="text">外观、壁纸与图标</span><span class="arrow">›</span>
+          </button>
+          <button class="settings-item" data-subview="settings-font">
+            <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>
+            <span class="text">字体与发光特效</span><span class="arrow">›</span>
+          </button>
+          <button class="settings-item" data-subview="settings-css">
+            <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+            <span class="text">全局 CSS 美化</span><span class="arrow">›</span>
+          </button>
+          <button class="settings-item" data-subview="settings-data">
+            <svg class="setting-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+            <span class="text">数据与缓存管理</span><span class="arrow">›</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- 我的面具 -->
+      <section class="view view-sub hidden" data-view="profile-personas">
+        <header class="sub-header">
+          <button class="back-btn" data-back="chat" onclick="document.querySelector('[data-chattab=\'chat-tab-profile\']').click()">返回</button>
+          <h2>我的面具</h2>
+          <button class="icon-button" onclick="showAddPersonaModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+        </header>
+        <div class="sub-body" id="personas-list-container" style="padding-top: 10px;"></div>
+      </section>
+
+      <!-- 我的收藏 -->
+      <section class="view view-sub hidden" data-view="profile-favorites">
+        <header class="sub-header" style="margin-bottom: 0;">
+          <button class="back-btn" data-back="chat" onclick="document.querySelector('[data-chattab=\'chat-tab-profile\']').click()">返回</button>
+          <h2>我的收藏</h2>
+          <button class="icon-button" id="btn-fav-edit" style="font-size: 14px;">多选</button>
+        </header>
+        <div id="fav-multi-action-bar" class="hidden" style="padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.8); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(0,0,0,0.05); z-index: 10; position: sticky; top: 50px;">
+          <label style="display:flex; align-items:center; gap:6px; font-size:14px;"><input type="checkbox" id="fav-select-all" class="ios-checkbox"> 全选</label>
+          <button class="btn-primary error btn-sm" id="fav-delete-selected">删除所选</button>
+        </div>
+        <div class="sub-body" id="favorites-list-container" style="display:flex; flex-direction:column; gap:12px; padding-top: 10px;"></div>
+      </section>
+
+      <!-- 礼物箱 -->
+      <section class="view view-sub hidden" data-view="profile-gifts">
+        <header class="sub-header">
+          <button class="back-btn" data-back="chat" onclick="document.querySelector('[data-chattab=\'chat-tab-profile\']').click()">返回</button>
+          <h2>礼物箱</h2>
+          <div style="width:24px"></div>
+        </header>
+        <div class="sub-body">
+          <div class="gift-grid" id="gifts-list-container"></div>
+        </div>
+      </section>
+
+      <!-- 二级页面：API 设置 -->
+      <section class="view view-sub hidden" data-view="settings-api">
+        <header class="sub-header"><button class="back-btn" data-back="settings">取消</button><h2>API 设置</h2><button class="save-btn" id="save-api">保存</button></header>
+        <div class="sub-body">
+          <div class="settings-section-title">💬 聊天 API</div>
+          <div class="form-group"><label>API Base URL</label><input type="text" id="api-url" class="sys-input" placeholder="例如: https://api.deepseek.com/v1" /></div>
+          <div class="form-group"><label>API Key</label><input type="password" id="api-key" class="sys-input" placeholder="sk-..." /></div>
+          <div class="form-group" style="text-align: center;"><button id="btn-fetch-models" class="btn-primary" style="width: 100%;">拉取模型 (真实请求)</button></div>
+          <div class="form-group"><label>选择模型</label><select id="api-model" class="sys-input"><option value="">请先拉取或手动输入</option></select><input type="text" id="api-model-manual" class="sys-input" placeholder="或手动输入模型名" style="margin-top:8px;" /></div>
+          <div class="form-group"><label>回复温度: <span id="temp-val">0.7</span></label><input type="range" id="api-temp" min="0" max="2" step="0.1" value="0.7" /></div>
+
+          <div class="settings-section-title">🎙️ MiniMax 语音 API</div>
+          <div class="form-group"><label>Group ID</label><input type="text" id="api-voice-group" class="sys-input" placeholder="MiniMax Group ID" /></div>
+          <div class="form-group"><label>API Key</label><input type="password" id="api-voice-key" class="sys-input" placeholder="MiniMax API Key" /></div>
+          <div class="form-group"><label>Voice ID (音色)</label><input type="text" id="api-voice-id" class="sys-input" placeholder="例如: male-qn-qingse" /></div>
+        </div>
+      </section>
+
+      <!-- 二级页面：外观与壁纸 -->
+      <section class="view view-sub hidden" data-view="settings-appearance">
+        <header class="sub-header"><button class="back-btn" data-back="settings">取消</button><h2>外观与壁纸</h2><button class="save-btn" id="save-appearance">保存</button></header>
+        <div class="sub-body">
+          <div class="settings-section-title">🖼️ 全局壁纸与贴纸</div>
+          <div class="form-group"><label>全局壁纸</label><input type="file" id="inp-wallpaper" accept="image/*" class="sys-file" /><button class="btn-secondary btn-sm" id="btn-clear-wallpaper" style="margin-top:8px;">清除壁纸</button></div>
+          <div class="form-group"><label>屏幕贴纸 (主页右下角)</label><input type="file" id="inp-sticker" accept="image/*" class="sys-file" /><button class="btn-secondary btn-sm" id="btn-clear-sticker" style="margin-top:8px;">清除贴纸</button></div>
+
+          <div class="settings-section-title">📱 图标美化 (上传图片替换)</div>
+          <div class="form-group"><label>Chat 图标</label><input type="file" id="inp-icon-chat" accept="image/*" class="sys-file" /></div>
+          <div class="form-group"><label>世界书 图标</label><input type="file" id="inp-icon-worldbook" accept="image/*" class="sys-file" /></div>
+          <div class="form-group"><label>论坛 图标</label><input type="file" id="inp-icon-forum" accept="image/*" class="sys-file" /></div>
+          <div class="form-group"><label>设置 图标</label><input type="file" id="inp-icon-settings" accept="image/*" class="sys-file" /></div>
+
+          <div class="settings-section-title">🖼️ 组件底图</div>
+          <div class="form-group"><label>个人卡片底图</label><input type="file" id="inp-bg-info" accept="image/*" class="sys-file" /></div>
+          <div class="form-group"><label>钱包组件底图</label><input type="file" id="inp-bg-wallet" accept="image/*" class="sys-file" /></div>
+          <div class="form-group"><label>音乐组件底图</label><input type="file" id="inp-bg-music" accept="image/*" class="sys-file" /></div>
+          <div class="form-group"><label>纪念日组件底图</label><input type="file" id="inp-bg-anni" accept="image/*" class="sys-file" /></div>
+          <div class="form-group"><label>待办事项组件底图</label><input type="file" id="inp-bg-todo" accept="image/*" class="sys-file" /></div>
+
+          <div class="settings-section-title">🎚️ 系统透明度 (真实生效)</div>
+          <div class="form-group"><label>状态栏透明度: <span id="val-alpha-status">85%</span></label><input type="range" id="inp-alpha-status" min="0" max="100" value="85" /></div>
+          <div class="form-group"><label>系统卡片透明度: <span id="val-alpha-card">92%</span></label><input type="range" id="inp-alpha-card" min="0" max="100" value="92" /></div>
+          <div class="form-group"><label>底部 Dock 透明度: <span id="val-alpha-dock">85%</span></label><input type="range" id="inp-alpha-dock" min="0" max="100" value="85" /></div>
+        </div>
+      </section>
+
+      <!-- 二级页面：字体与发光 -->
+      <section class="view view-sub hidden" data-view="settings-font">
+        <header class="sub-header"><button class="back-btn" data-back="settings">取消</button><h2>字体设置</h2><button class="save-btn" id="save-font">保存</button></header>
+        <div class="sub-body">
+          <div class="form-group"><label>字体链接 (CSS或TTF/WOFF)</label><input type="text" id="inp-font-url" class="sys-input" placeholder="例如: https://fonts.googleapis.com/css2?..." /></div>
+          <div class="form-group"><label>字体名称 (Font Family)</label><input type="text" id="inp-font-family" class="sys-input" placeholder="例如: 'Ma Shan Zheng' 或 'CustomFont'" /></div>
+          <div class="form-group"><label>全局字体大小: <span id="val-font-size">14px</span></label><input type="range" id="inp-font-size" min="12" max="20" value="14" /></div>
+          <div class="form-group"><label>主文字颜色</label><input type="color" id="inp-font-color" value="#4b4548" class="sys-color" /></div>
+          <div class="form-group"><label>字体边缘发光强度: <span id="val-font-glow">0px</span></label><input type="range" id="inp-font-glow" min="0" max="10" value="0" /></div>
+          <div class="form-group"><label>发光颜色</label><input type="color" id="inp-glow-color" value="#ffffff" class="sys-color" /></div>
+        </div>
+      </section>
+
+      <!-- 二级页面：全局 CSS -->
+      <section class="view view-sub hidden" data-view="settings-css">
+        <header class="sub-header"><button class="back-btn" data-back="settings">取消</button><h2>全局 CSS</h2><button class="save-btn" id="save-css">保存</button></header>
+        <div class="sub-body">
+          <textarea id="inp-custom-css" class="diary-textarea sys-input" placeholder="/* 例如：\nbody { filter: sepia(0.1); } \n*/" style="height:250px; font-family:monospace;"></textarea>
+        </div>
+      </section>
+
+      <!-- 二级页面：数据管理 -->
+      <section class="view view-sub hidden" data-view="settings-data">
+        <header class="sub-header"><button class="back-btn" data-back="settings">返回</button><h2>数据管理</h2><div style="width:24px"></div></header>
+        <div class="sub-body" style="text-align: center;">
+          <div class="form-group"><label>当前内存占用预估</label><h3 id="mem-usage" style="color:var(--color-accent); margin:10px 0;">计算中...</h3></div>
+          <hr style="border:none; border-top:1px solid rgba(0,0,0,0.05); margin:20px 0;" />
+          <button class="btn-primary" id="btn-export" style="width:80%; margin-bottom:12px;">导出所有数据 (JSON)</button>
+          <div style="position:relative; width:80%; margin:0 auto 12px;">
+            <button class="btn-secondary" style="width:100%;">导入数据 (JSON)</button>
+            <input type="file" id="btn-import" accept=".json" style="position:absolute; inset:0; opacity:0; cursor:pointer;" />
+          </div>
+          <button class="btn-secondary" id="btn-clear" style="width:80%; color:#ef4444;">清理所有缓存</button>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- 底部 Dock -->
+    <nav class="dock-ios" id="sys-dock">
+      <div class="dock-inner">
+        <button class="dock-icon-button" data-target="chat">
+          <div class="dock-icon-square"><svg viewBox="0 0 24 24" class="dock-icon-svg"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></div>
+          <span>Chat</span>
+        </button>
+        <button class="dock-icon-button active" data-target="home">
+          <div class="dock-icon-square"><svg viewBox="0 0 24 24" class="dock-icon-svg"><path d="M12 3L4 9v12h5v-7h6v7h5V9z"/></svg></div>
+          <span>主页</span>
+        </button>
+        <button class="dock-icon-button" data-target="settings">
+          <div class="dock-icon-square"><svg viewBox="0 0 24 24" class="dock-icon-svg"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg></div>
+          <span>设置</span>
+        </button>
+      </div>
+      <div class="home-indicator"></div>
+    </nav>
+  </div>
+
+  <!-- ================= 弹窗区域 ================= -->
+
+  <!-- 🌟 长按菜单 -->
+  <div id="msg-context-menu" class="hidden glass-card" style="position: fixed; z-index: 99999;">
+    <div class="ctx-item" onclick="msgAction('reply')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg> 引用</div>
+    <div class="ctx-item" onclick="msgAction('recall')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10h10a5 5 0 0 1 5 5v2a5 5 0 0 1-5 5H3"></path><polyline points="8 5 3 10 8 15"></polyline></svg> 撤回</div>
+    <div class="ctx-item" onclick="msgAction('copy')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> 复制</div>
+    <div class="ctx-item" onclick="msgAction('favorite')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> 收藏</div>
+    <div class="ctx-item" onclick="msgAction('rewind')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v5h5"></path><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"></path></svg> 回溯</div>
+    <div class="ctx-item" onclick="msgAction('select')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg> 多选</div>
+    <div class="ctx-item danger" onclick="msgAction('delete')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> 删除</div>
+  </div>
+
+  <!-- 转发弹窗 -->
+  <div class="modal-backdrop hidden" id="forward-modal">
+    <div class="modal">
+      <header class="modal-header">
+        <button class="btn-secondary btn-sm" onclick="document.getElementById('forward-modal').classList.add('hidden')">取消</button>
+        <h3>选择转发对象</h3>
+        <div style="width:40px"></div>
+      </header>
+      <section class="modal-body" id="forward-contact-list" style="padding: 10px;"></section>
+    </div>
+  </div>
+  
+  <!-- 添加新人设弹窗 -->
+  <div class="modal-backdrop hidden" id="add-char-modal">
+    <div class="modal">
+      <header class="modal-header">
+        <button class="btn-secondary btn-sm" onclick="document.getElementById('add-char-modal').classList.add('hidden')">取消</button>
+        <h3>添加新人设</h3>
+        <button class="btn-primary btn-sm" id="btn-save-new-char">保存</button>
+      </header>
+      <section class="modal-body">
+        <div class="form-group"><label>头像</label><input type="file" id="new-char-avatar" accept="image/*" class="sys-file" /></div>
+        <div class="form-group"><label>名称</label><input type="text" id="new-char-name" class="sys-input" placeholder="输入名称" /></div>
+        <div class="form-group"><label>人物设定 (System Prompt)</label><textarea id="new-char-persona" class="sys-input" rows="3" placeholder="你是一个..."></textarea></div>
+        <div class="form-group"><label>开场白</label><input type="text" id="new-char-greeting" class="sys-input" placeholder="你好呀！" /></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- 发起群聊弹窗 -->
+  <div class="modal-backdrop hidden" id="add-group-modal">
+    <div class="modal">
+      <header class="modal-header">
+        <button class="btn-secondary btn-sm" onclick="document.getElementById('add-group-modal').classList.add('hidden')">取消</button>
+        <h3>发起群聊</h3>
+        <button class="btn-primary btn-sm" id="btn-save-new-group">创建</button>
+      </header>
+      <section class="modal-body">
+        <div class="form-group"><label>群名称</label><input type="text" id="new-group-name" class="sys-input" placeholder="输入群名称" /></div>
+        <div class="form-group">
+          <label>选择成员</label>
+          <div id="group-member-list" style="max-height: 150px; overflow-y: auto; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; padding: 8px; background: rgba(255,255,255,0.5);"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ================= 🚨 聊天设置页面 (织织机重构版) ================= -->
+  <div class="modal-backdrop hidden" id="chat-settings-modal" style="align-items: flex-end; z-index: 150;">
+    <div class="modal bottom-sheet" style="background: #f4f4f5; display: flex; flex-direction: column;">
+      <div class="sheet-handle"></div>
+      <header class="modal-header" style="border-bottom: none; padding-top: 10px; background: transparent;">
+        <button class="btn-secondary btn-sm" id="cs-cancel" style="background: transparent; border: none; font-weight: bold; color: #666;">取消</button>
+        <h3 style="font-size: 15px;">聊天设置</h3>
+        <button class="btn-primary btn-sm" id="cs-save" style="padding: 6px 16px;">保存</button>
+      </header>
+      
+      <!-- 滚动区域 -->
+      <section class="modal-body" style="flex: 1; max-height: none; padding: 14px; display: flex; flex-direction: column; gap: 16px;">
+        
+        <!-- 1. 人物名片板块 -->
+        <div class="cs-profile-card" id="cs-profile-card">
+          <div class="cs-profile-bg" id="cs-profile-bg" onclick="document.getElementById('cs-bg-upload').click()"></div>
+          <input type="file" id="cs-bg-upload" accept="image/*" style="display:none;" />
+          <button class="cs-details-btn" onclick="showCharDetailsModal()">Details &gt;</button>
+          
+          <div class="cs-profile-content">
+            <div class="cs-avatars-wrap">
+              <div class="cs-avatar-back" id="cs-avatar-back"></div>
+              <div class="cs-avatar-front" id="cs-avatar-front"></div>
+            </div>
+            <div class="cs-profile-info">
+              <div class="cs-profile-name" id="cs-disp-name">角色名</div>
+              <div class="cs-profile-id" id="cs-disp-id">ID: user_xxx</div>
+              <div class="cs-profile-status"><span class="status-dot"></span> 在线</div>
+            </div>
+          </div>
+          <div class="cs-profile-bio-wrap">
+            <div class="cs-profile-bio" contenteditable="true" id="cs-disp-bio" spellcheck="false">暂无介绍</div>
+            <button class="cs-bio-more">...</button>
+          </div>
+        </div>
+
+        <!-- 2. 记忆板块 -->
+        <div class="cs-section">
+          <div class="cs-section-title">🧠 记忆与上下文</div>
+          <div class="cs-item">
+            <div class="cs-item-info">
+              <span>附带历史消息数</span>
+              <small>AI回复时参考的历史对话数量</small>
+            </div>
+            <div class="cs-item-ctrl">
+              <input type="number" id="cs-memory-limit" class="sys-input" style="width: 60px; text-align: center; padding: 4px;" value="50">
+            </div>
+          </div>
+          <div class="cs-item">
+            <div class="cs-item-info"><span>全局记忆系统</span></div>
+            <div class="cs-item-ctrl"><input type="checkbox" class="ios-toggle" id="cs-global-memory"></div>
+          </div>
+          <div class="cs-item">
+            <div class="cs-item-info"><span>与群聊共享记忆</span></div>
+            <div class="cs-item-ctrl"><input type="checkbox" class="ios-toggle" id="cs-share-memory"></div>
+          </div>
+          <div class="cs-item">
+            <div class="cs-item-info"><span>自动总结记忆</span></div>
+            <div class="cs-item-ctrl"><input type="checkbox" class="ios-toggle" id="cs-auto-summary"></div>
+          </div>
+          <div class="cs-item" id="cs-summary-interval-wrap">
+            <div class="cs-item-info"><span>总结触发轮数</span></div>
+            <div class="cs-item-ctrl">
+              <input type="number" id="cs-summary-interval" class="sys-input" style="width: 60px; text-align: center; padding: 4px;" value="30">
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. 现实感知板块 -->
+        <div class="cs-section">
+          <div class="cs-section-title">🌍 现实感知</div>
+          <div class="cs-item">
+            <div class="cs-item-info">
+              <span>时间感知</span>
+              <small>开启后AI将知道当前的现实时间</small>
+            </div>
+            <div class="cs-item-ctrl"><input type="checkbox" class="ios-toggle" id="cs-time-aware"></div>
+          </div>
+          <div class="cs-item">
+            <div class="cs-item-info">
+              <span>天气与地点感知</span>
+              <small>需配置支持联网搜索的API</small>
+            </div>
+            <div class="cs-item-ctrl"><input type="checkbox" class="ios-toggle" id="cs-weather-aware"></div>
+          </div>
+        </div>
+
+        <!-- 4. 美化板块 (仅当前聊天) -->
+        <div class="cs-section">
+          <div class="cs-section-title">🎨 界面美化 (仅当前)</div>
+          <div class="cs-item" onclick="document.getElementById('cs-chat-bg').click()">
+            <div class="cs-item-info"><span>聊天背景设置</span></div>
+            <div class="cs-item-ctrl">›</div>
+            <input type="file" id="cs-chat-bg" accept="image/*" style="display:none;">
+          </div>
+          <div class="cs-item" onclick="window.tempCsChatBg = 'clear'; showToast('聊天背景已清除，请点击保存');">
+            <div class="cs-item-info"><span style="color: #ef4444;">清除聊天背景</span></div>
+          </div>
+          
+          <div class="cs-item">
+            <div class="cs-item-info"><span>显示双方头像</span></div>
+            <div class="cs-item-ctrl"><input type="checkbox" class="ios-toggle" id="cs-show-avatar" checked></div>
+          </div>
+          <div class="cs-item">
+            <div class="cs-item-info"><span>头像形状</span></div>
+            <div class="cs-item-ctrl">
+              <select id="cs-avatar-shape" class="sys-input" style="width: auto; padding: 4px 8px;">
+                <option value="circle">圆形</option>
+                <option value="square">圆角矩形</option>
+              </select>
+            </div>
+          </div>
+          <div class="cs-item">
+            <div class="cs-item-info"><span>头像大小</span></div>
+            <div class="cs-item-ctrl">
+              <input type="range" id="cs-avatar-size" min="24" max="64" value="32" style="width: 80px;">
+            </div>
+          </div>
+          
+          <div style="padding: 10px 0;">
+            <label style="font-size: 12px; color: #666; margin-bottom: 4px; display: block;">专属气泡 CSS</label>
+            <textarea id="cs-bubble-css" class="sys-input" rows="2" placeholder="例如: .msg-bubble { border-radius: 0; }"></textarea>
+          </div>
+          <div style="padding: 10px 0; border-top: 1px solid rgba(0,0,0,0.05);">
+            <label style="font-size: 12px; color: #666; margin-bottom: 4px; display: block;">聊天界面全局 CSS</label>
+            <textarea id="cs-global-css" class="sys-input" rows="2" placeholder="例如: .chat-body { filter: sepia(0.1); }"></textarea>
+          </div>
+          <div class="cs-item">
+            <div class="cs-item-info"><span>界面字体颜色</span></div>
+            <div class="cs-item-ctrl"><input type="color" id="cs-ui-color" value="#4b4548" class="sys-color"></div>
+          </div>
+        </div>
+
+        <!-- 5. 互动设置板块 -->
+        <div class="cs-section">
+          <div class="cs-section-title">✨ 互动设置</div>
+          <div class="cs-item">
+            <div class="cs-item-info"><span>显示时间戳</span></div>
+            <div class="cs-item-ctrl"><input type="checkbox" class="ios-toggle" id="cs-show-timestamp" checked></div>
+          </div>
+          <div class="cs-item">
+            <div class="cs-item-info"><span>双击头像拍一拍</span></div>
+            <div class="cs-item-ctrl"><input type="checkbox" class="ios-toggle" id="cs-enable-poke" checked></div>
+          </div>
+          <div class="cs-item">
+            <div class="cs-item-info">
+              <span>后台活动 (主动发消息)</span>
+            </div>
+            <div class="cs-item-ctrl"><input type="checkbox" class="ios-toggle" id="cs-proactive-msg"></div>
+          </div>
+          <div class="cs-item">
+            <div class="cs-item-info">
+              <span>允许主动拨打电话</span>
+              <small>语音/视频 (占位开发中)</small>
+            </div>
+            <div class="cs-item-ctrl"><input type="checkbox" class="ios-toggle" id="cs-proactive-call"></div>
+          </div>
+        </div>
+
+        <!-- 6. 其他 (危险操作与管理) -->
+        <div class="cs-section">
+          <div class="cs-section-title" style="color: #ef4444;">⚠️ 管理与危险操作</div>
+          <div class="cs-item" onclick="showToast('拉黑功能开发中...')">
+            <div class="cs-item-info"><span>拉黑管理 (双向)</span></div><div class="cs-item-ctrl">›</div>
+          </div>
+          <div class="cs-item" id="btn-export-chat-json">
+            <div class="cs-item-info"><span>导出此聊天记录 (JSON)</span></div><div class="cs-item-ctrl">›</div>
+          </div>
+          <div class="cs-item" onclick="document.getElementById('inp-import-chat').click()">
+            <div class="cs-item-info"><span>导入聊天记录 (JSON)</span></div><div class="cs-item-ctrl">›</div>
+            <input type="file" id="inp-import-chat" accept=".json" style="display:none;">
+          </div>
+          <div class="cs-item" onclick="clearSpecificChat(false)">
+            <div class="cs-item-info"><span style="color: #ef4444;">仅清空聊天记录</span></div>
+          </div>
+          <div class="cs-item" onclick="clearSpecificChat(true)">
+            <div class="cs-item-info"><span style="color: #ef4444;">清空聊天记录与记忆</span></div>
+          </div>
+          <div class="cs-item" onclick="deleteCurrentContact()">
+            <div class="cs-item-info"><span style="color: #ef4444; font-weight: bold;">删除此联系人</span></div>
+          </div>
+        </div>
+
+      </section>
+    </div>
+  </div>
+
+  <!-- 🚨 人物设定详情编辑弹窗 -->
+  <div class="modal-backdrop hidden" id="char-details-modal" style="z-index: 250;">
+    <div class="modal" style="max-height: 85vh; width: 90%; max-width: 380px;">
+      <header class="modal-header">
+        <button class="btn-secondary btn-sm" onclick="document.getElementById('char-details-modal').classList.add('hidden')">返回</button>
+        <h3>人物设定详情</h3>
+        <button class="btn-primary btn-sm" id="cd-save">保存</button>
+      </header>
+      <section class="modal-body" style="padding: 16px;">
+        <div class="form-group" style="text-align: center; background: transparent; box-shadow: none;">
+          <div class="cs-avatar-front" id="cd-avatar-preview" style="width: 80px; height: 80px; margin: 0 auto 10px; cursor: pointer; position: relative; border-radius: 20px; background-color: #eee;" onclick="document.getElementById('cd-avatar-upload').click()"></div>
+          <div style="font-size: 12px; color: #999;">点击更换头像</div>
+          <input type="file" id="cd-avatar-upload" accept="image/*" style="display:none;" />
+        </div>
+        <div class="form-group"><label>聊天备注 (仅自己可见)</label><input type="text" id="cd-remark" class="sys-input" placeholder="输入备注名"></div>
+        <div class="form-group"><label>角色真名</label><input type="text" id="cd-realname" class="sys-input" placeholder="输入角色真实姓名"></div>
+        <div class="form-group"><label>性别</label><input type="text" id="cd-gender" class="sys-input" placeholder="例如: 男/女/其他"></div>
+        <div class="form-group"><label>性格特点</label><input type="text" id="cd-personality" class="sys-input" placeholder="例如: 傲娇、温柔"></div>
+        <div class="form-group"><label>核心人设 (Prompt)</label><textarea id="cd-persona" class="sys-input" rows="6" placeholder="详细的系统提示词，AI会严格遵守..."></textarea></div>
+        <div class="form-group">
+          <label>关联的世界书</label>
+          <select id="cd-worldbook" class="sys-input">
+            <option value="">未关联</option>
+            <!-- JS 动态填充 -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label>"我"的面具 (在此聊天中扮演)</label>
+          <select id="cd-mypersona" class="sys-input">
+            <!-- JS 动态填充 -->
+          </select>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- 心声记录簿弹窗 -->
+  <div class="modal-backdrop hidden" id="inner-voice-modal" style="align-items: flex-end;">
+    <div class="modal bottom-sheet" style="display: flex; flex-direction: column; background: #fdfafb;">
+      <div class="sheet-handle"></div>
+      <header class="modal-header" style="background: transparent; border-bottom: none; padding-top: 10px;">
+        <button class="btn-secondary btn-sm" id="iv-close" style="background: transparent; border: none;">关闭</button>
+        <h3 style="font-size: 16px;">心声记录簿</h3>
+        <div style="display:flex; gap:8px;">
+          <button class="btn-secondary btn-sm" id="iv-multi-select-btn" style="background: transparent; border: none; color: var(--color-text-sub);">多选</button>
+          <button class="btn-primary btn-sm" id="iv-regen">生成心声</button>
+        </div>
+      </header>
+      
+      <div id="iv-multi-action-bar" class="hidden" style="padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.8); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(0,0,0,0.05); z-index: 10;">
+        <label style="display:flex; align-items:center; gap:6px; font-size:14px; color:var(--color-text-main);"><input type="checkbox" id="iv-select-all" class="ios-checkbox"> 全选</label>
+        <button class="btn-primary error btn-sm" id="iv-delete-selected">删除所选</button>
+      </div>
+
+      <section class="modal-body" id="iv-list" style="flex: 1; overflow-y: auto; padding: 14px; background: transparent; display: flex; flex-direction: column; gap: 16px;">
+      </section>
+    </div>
+  </div>
+
+  <!-- 伪造语音弹窗 -->
+  <div class="modal-backdrop hidden" id="fake-voice-modal">
+    <div class="modal">
+      <header class="modal-header">
+        <button class="btn-secondary btn-sm" onclick="document.getElementById('fake-voice-modal').classList.add('hidden')">取消</button>
+        <h3>发送语音</h3>
+        <button class="btn-primary btn-sm" id="btn-send-fake-voice">发送</button>
+      </header>
+      <section class="modal-body">
+        <div class="form-group">
+          <label>语音内容 (将转换为语音气泡)</label>
+          <input type="text" id="inp-fake-voice" class="sys-input" placeholder="输入你想说的话..." />
+        </div>
+        <div class="form-group">
+          <label>语音时长 (秒)</label>
+          <input type="number" id="inp-voice-duration" class="sys-input" value="3" min="1" max="60" />
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- 📷 拍照功能弹窗 -->
+  <div class="modal-backdrop hidden" id="fake-photo-modal">
+    <div class="modal">
+      <header class="modal-header">
+        <button class="btn-secondary btn-sm" onclick="document.getElementById('fake-photo-modal').classList.add('hidden')">取消</button>
+        <h3>假装拍照</h3>
+        <button class="btn-primary btn-sm" id="btn-send-fake-photo">发送</button>
+      </header>
+      <section class="modal-body">
+        <div class="form-group">
+          <label>照片描述 (AI 会根据此描述做出反应)</label>
+          <input type="text" id="inp-fake-photo" class="sys-input" placeholder="例如: 一只在睡觉的小猫..." />
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- 转账弹窗 -->
+  <div class="modal-backdrop hidden" id="transfer-modal">
+    <div class="modal">
+      <header class="modal-header">
+        <button class="btn-secondary btn-sm" onclick="document.getElementById('transfer-modal').classList.add('hidden')">取消</button>
+        <h3>发起转账</h3>
+        <button class="btn-primary btn-sm" id="btn-send-transfer">发送</button>
+      </header>
+      <section class="modal-body">
+        <div class="form-group"><label>金额 (¥)</label><input type="number" id="inp-transfer-amount" class="sys-input" placeholder="0.00" /></div>
+        <div class="form-group"><label>备注</label><input type="text" id="inp-transfer-note" class="sys-input" placeholder="转账给你" /></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- 音乐设置弹窗 -->
+  <div class="modal-backdrop hidden" id="music-modal">
+    <div class="modal">
+      <header class="modal-header">
+        <button class="btn-secondary btn-sm" onclick="document.getElementById('music-modal').classList.add('hidden')">取消</button>
+        <h3>设置音乐</h3>
+        <button class="btn-primary btn-sm" id="btn-save-music">保存</button>
+      </header>
+      <section class="modal-body">
+        <div class="form-group"><label>歌曲名称</label><input type="text" id="inp-music-title" class="sys-input" placeholder="输入歌名" /></div>
+        <div class="form-group"><label>歌手</label><input type="text" id="inp-music-artist" class="sys-input" placeholder="输入歌手" /></div>
+        <div class="form-group"><label>唱片封面</label><input type="file" id="inp-music-cover" accept="image/*" class="sys-file" /></div>
+        <div class="form-group"><label>音频文件</label><input type="file" id="inp-music-file" accept="audio/*" class="sys-file" /></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- 纪念日设置弹窗 -->
+  <div class="modal-backdrop hidden" id="anni-modal">
+    <div class="modal">
+      <header class="modal-header">
+        <button class="btn-secondary btn-sm" onclick="document.getElementById('anni-modal').classList.add('hidden')">取消</button>
+        <h3>设置纪念日</h3>
+        <button class="btn-primary btn-sm" id="btn-save-anni">保存</button>
+      </header>
+      <section class="modal-body">
+        <div class="form-group"><label>事件名称</label><input type="text" id="inp-anni-title" class="sys-input" placeholder="例如: 在一起" /></div>
+        <div class="form-group"><label>目标日期</label><input type="date" id="inp-anni-date" class="sys-input" /></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- 表情包管理弹窗 -->
+  <div class="modal-backdrop hidden" id="sticker-manager-modal">
+    <div class="modal">
+      <header class="modal-header">
+        <button class="btn-secondary btn-sm" onclick="document.getElementById('sticker-manager-modal').classList.add('hidden')">关闭</button>
+        <h3>管理表情包</h3>
+        <button class="btn-primary btn-sm" id="btn-add-sticker">添加</button>
+      </header>
+      <section class="modal-body">
+        <div class="form-group"><label>图片 URL</label><input type="text" id="inp-sticker-url" class="sys-input" placeholder="https://..." /></div>
+        <div class="form-group"><label>分组名称</label><input type="text" id="inp-sticker-group" class="sys-input" placeholder="例如: 软萌猫猫" /></div>
+        <div class="settings-section-title">已添加的表情 (点击删除)</div>
+        <div id="sticker-manager-list" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;"></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- 添加/编辑面具弹窗 -->
+  <div class="modal-backdrop hidden" id="persona-modal">
+    <div class="modal">
+      <header class="modal-header">
+        <button class="btn-secondary btn-sm" onclick="document.getElementById('persona-modal').classList.add('hidden')">取消</button>
+        <h3 id="persona-modal-title">新建面具</h3>
+        <button class="btn-primary btn-sm" id="btn-save-persona">保存</button>
+      </header>
+      <section class="modal-body">
+        <input type="hidden" id="inp-persona-id" />
+        <div class="form-group"><label>面具头像</label><input type="file" id="inp-persona-avatar" accept="image/*" class="sys-file" /></div>
+        <div class="form-group"><label>面具名称</label><input type="text" id="inp-persona-name" class="sys-input" placeholder="例如: 高冷师尊" /></div>
+        <div class="form-group"><label>性格特点</label><input type="text" id="inp-persona-personality" class="sys-input" placeholder="例如: 傲娇、口是心非" /></div>
+        <div class="form-group"><label>人设描述 (详细设定)</label><textarea id="inp-persona-desc" class="sys-input" rows="4" placeholder="详细的人物背景、说话风格等..."></textarea></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- 零钱明细弹窗 -->
+  <div class="modal-backdrop hidden" id="wallet-detail-modal" style="align-items: flex-end;">
+    <div class="modal bottom-sheet">
+      <div class="sheet-handle"></div>
+      <header class="modal-header" style="background: transparent; border: none;">
+        <button class="btn-secondary btn-sm" onclick="document.getElementById('wallet-detail-modal').classList.add('hidden')" style="border:none; background:transparent;">关闭</button>
+        <h3>零钱明细</h3>
+        <button class="btn-primary btn-sm" onclick="rechargeWallet()">充值</button>
+      </header>
+      <section class="modal-body" style="padding: 0; display: flex; flex-direction: column; height: calc(100% - 60px);">
+        <div style="padding: 20px; text-align: center;">
+          <div style="font-size: 14px; color: #999; margin-bottom: 8px;">当前余额</div>
+          <div style="font-size: 36px; font-weight: 700; color: #333;" id="wallet-modal-balance">¥ 0.00</div>
+        </div>
+        <div style="flex: 1; overflow-y: auto; background: #fff; border-radius: 30px 30px 0 0; padding: 20px; box-shadow: 0 -4px 20px rgba(0,0,0,0.02);" id="transaction-list">
+          <!-- JS render -->
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- 礼物详情弹窗 -->
+  <div class="modal-backdrop hidden" id="gift-detail-modal">
+    <div class="modal">
+      <header class="modal-header">
+        <button class="btn-secondary btn-sm" onclick="document.getElementById('gift-detail-modal').classList.add('hidden')">关闭</button>
+        <h3>礼物详情</h3>
+        <div style="width:40px"></div>
+      </header>
+      <section class="modal-body" style="text-align: center;">
+        <div id="gift-detail-icon" style="font-size: 60px; margin: 20px 0; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));">🎁</div>
+        <h2 id="gift-detail-name" style="margin-bottom: 10px;">礼物名称</h2>
+        <div style="font-size: 12px; color: #999; margin-bottom: 20px;" id="gift-detail-sender">来自: AI</div>
+        
+        <button class="btn-primary" id="btn-generate-gift-msg" style="margin-bottom: 16px; display: none;">✨ 让TA写贺卡</button>
+        
+        <div id="gift-detail-desc" style="font-size: 14px; color: #555; line-height: 1.6; background: rgba(248,168,195,0.1); padding: 16px; border-radius: 16px; text-align: left;">
+          尚未生成贺卡
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="script.js" defer></script>
+</body>
+</html>
+    <script  src="./script.js"></script>
+
+  </body>
+  
+</html>
