@@ -5,13 +5,11 @@
   <title>MiMi小手机</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   
-  <!-- 🚨 苹果 iOS 强制全屏终极代码 -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="MiMi" />
   
-  <!-- 强制读取大写 PNG 图标，加 ?v=2 破解缓存 -->
   <link rel="apple-touch-icon" href="/MiMi/icon.PNG?v=2" />
   <link rel="icon" type="image/png" href="/MiMi/icon.PNG?v=2" />
   <link rel="manifest" href="/MiMi/manifest.json?v=2" />
@@ -380,12 +378,16 @@
 
       <!-- 礼物箱 -->
       <section class="view view-sub hidden" data-view="profile-gifts">
-        <header class="sub-header">
+        <header class="sub-header" style="margin-bottom: 0;">
           <button class="back-btn" data-back="chat" onclick="document.querySelector('[data-chattab=\'chat-tab-profile\']').click()">返回</button>
           <h2>礼物箱</h2>
-          <div style="width:24px"></div>
+          <button class="icon-button" id="btn-gift-edit" style="font-size: 14px;">多选</button>
         </header>
-        <div class="sub-body">
+        <div id="gift-multi-action-bar" class="hidden" style="padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.8); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(0,0,0,0.05); z-index: 10; position: sticky; top: 50px;">
+          <label style="display:flex; align-items:center; gap:6px; font-size:14px;"><input type="checkbox" id="gift-select-all" class="ios-checkbox"> 全选</label>
+          <button class="btn-primary error btn-sm" id="gift-delete-selected">删除所选</button>
+        </div>
+        <div class="sub-body" style="padding-top: 10px;">
           <div class="gift-grid" id="gifts-list-container"></div>
         </div>
       </section>
@@ -797,6 +799,24 @@
       </div>
 
       <section class="modal-body" id="iv-list" style="flex: 1; overflow-y: auto; padding: 14px; background: transparent; display: flex; flex-direction: column; gap: 16px;">
+      </section>
+    </div>
+  </div>
+
+  <!-- 接收转账弹窗 -->
+  <div class="modal-backdrop hidden" id="receive-transfer-modal">
+    <div class="modal">
+      <header class="modal-header">
+        <button class="btn-secondary btn-sm" onclick="document.getElementById('receive-transfer-modal').classList.add('hidden')">关闭</button>
+        <h3>收到转账</h3>
+        <div style="width:40px"></div>
+      </header>
+      <section class="modal-body" style="text-align: center;">
+        <div style="font-size: 40px; color: #ffafbd; margin: 20px 0; font-weight: bold;">¥ <span id="recv-transfer-amt">0.00</span></div>
+        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+          <button class="btn-secondary" id="btn-refund-transfer" style="flex:1;">退还</button>
+          <button class="btn-primary" id="btn-confirm-transfer" style="flex:1;">确认收款</button>
+        </div>
       </section>
     </div>
   </div>
