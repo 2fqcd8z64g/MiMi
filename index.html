@@ -20,7 +20,7 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="style.css" />
 </head>
-  <body>
+<body>
   <div class="app-shell">
 
     <!-- 顶部状态栏 -->
@@ -865,7 +865,8 @@
         <div class="form-group"><label>歌曲名称</label><input type="text" id="inp-music-title" class="sys-input" placeholder="输入歌名" /></div>
         <div class="form-group"><label>歌手</label><input type="text" id="inp-music-artist" class="sys-input" placeholder="输入歌手" /></div>
         <div class="form-group"><label>唱片封面</label><input type="file" id="inp-music-cover" accept="image/*" class="sys-file" /></div>
-        <div class="form-group"><label>音频文件</label><input type="file" id="inp-music-file" accept="audio/*" class="sys-file" /></div>
+        <div class="form-group"><label>音频文件 (本地)</label><input type="file" id="inp-music-file" accept="audio/*" class="sys-file" /></div>
+        <div class="form-group"><label>或 音频直链 (URL)</label><input type="text" id="inp-music-url" class="sys-input" placeholder="https://..." /></div>
       </section>
     </div>
   </div>
@@ -965,9 +966,4 @@
 
   <script src="script.js" defer></script>
 </body>
-</html>
-    <script  src="./script.js"></script>
-
-  </body>
-  
 </html>
