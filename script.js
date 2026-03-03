@@ -19,7 +19,7 @@ if (window.marked) {
 document.addEventListener('DOMContentLoaded', function() {
   console.log('✅ DOM已加载，开始初始化...');
 
-  const STORAGE_KEY = 'softphone-settings-v31'; 
+  const STORAGE_KEY = 'softphone-settings-v32'; 
 
   const defaultSettings = {
     wallpaper: '', sticker: '', customCss: '',
@@ -58,7 +58,11 @@ document.addEventListener('DOMContentLoaded', function() {
         timestamps: true, enablePoke: true, proactive: false, proactiveCall: false,
         
         lastMsg: '你好呀！我是你的 AI 助手~', time: '12:00', pinned: false, isGroup: false,
-        innerVoices: []
+        innerVoices: [],
+        
+        // 🚨 拉黑状态字段
+        isBlockedByMe: false, // 我是否拉黑了TA
+        isBlockedByAI: false  // TA是否拉黑了我
       }
     ],
     chatHistory: {}
@@ -70,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function() {
     try {
       let raw = await localforage.getItem(STORAGE_KEY);
       if (!raw) {
-          raw = localStorage.getItem('softphone-settings-v30') || await localforage.getItem('softphone-settings-v30'); 
+          raw = localStorage.getItem('softphone-settings-v31') || await localforage.getItem('softphone-settings-v31') || await localforage.getItem('softphone-settings-v30'); 
           if (raw) await localforage.setItem(STORAGE_KEY, raw);
       }
       if (!raw) return { ...defaultSettings };
@@ -88,7 +92,13 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!parsed.transactions) parsed.transactions = [];
       if (!parsed.worldbooks) parsed.worldbooks = [];
 
-      parsed.contacts = parsed.contacts.map(c => ({ ...defaultSettings.contacts[0], ...c, innerVoices: c.innerVoices || [] }));
+      parsed.contacts = parsed.contacts.map(c => ({ 
+          ...defaultSettings.contacts[0], 
+          ...c, 
+          innerVoices: c.innerVoices || [],
+          isBlockedByMe: c.isBlockedByMe || false,
+          isBlockedByAI: c.isBlockedByAI || false
+      }));
       return { ...defaultSettings, ...parsed };
     } catch (e) { return { ...defaultSettings }; }
   }
@@ -408,7 +418,6 @@ document.addEventListener('DOMContentLoaded', function() {
           }
       }
 
-      // 🚨 礼物箱多选渲染逻辑
       const giftList = document.getElementById('gifts-list-container');
       if (giftList) {
           giftList.innerHTML = '';
@@ -468,7 +477,6 @@ document.addEventListener('DOMContentLoaded', function() {
       }
   });
 
-  // 🚨 礼物箱多选操作
   document.getElementById('btn-gift-edit')?.addEventListener('click', function() {
       isGiftMultiSelect = !isGiftMultiSelect;
       this.textContent = isGiftMultiSelect ? '取消' : '多选';
@@ -914,6 +922,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     renderChatHistory();
+    updateBlockUI(); // 🚨 打开房间时检查拉黑状态
     switchView('chat-room');
   }
 
@@ -1159,7 +1168,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
+  // 🚨 拦截发送逻辑（拉黑状态下不可发送）
   chatSendBtn.addEventListener('click', () => {
+    const c = settings.contacts.find(x => x.id === currentChatId);
+    if (c.isBlockedByMe) return window.showToast('你已拉黑对方，无法发送消息');
+    if (c.isBlockedByAI) return window.showToast('你已被对方拉黑，请点击底部申请解除');
+
     let val = chatInput.value.trim(); if (!val) return;
     const time = formatTime(new Date());
     
@@ -1173,7 +1187,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!settings.chatHistory[currentChatId]) settings.chatHistory[currentChatId] = [];
     settings.chatHistory[currentChatId].push(msgObj);
     
-    const c = settings.contacts.find(x => x.id === currentChatId);
     appendMsgToUI('user', finalContent, settings.chatHistory[currentChatId].length - 1, time, c.timestamps !== false);
     updateContactLastMsg(currentChatId, val, time);
     saveSettings(); 
@@ -1192,10 +1205,12 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   document.getElementById('inp-send-image').addEventListener('change', function(e) {
+    const c = settings.contacts.find(x => x.id === currentChatId);
+    if (c.isBlockedByMe || c.isBlockedByAI) return window.showToast('拉黑状态下无法发送图片');
+
     fileToBase64Compressed(e.target.files[0], res => {
       const html = `<img src="${res}" alt="图片">`;
       const time = formatTime(new Date());
-      const c = settings.contacts.find(x => x.id === currentChatId);
       appendMsgToUI('user', html, settings.chatHistory[currentChatId].length, time, c.timestamps !== false);
       settings.chatHistory[currentChatId].push({ role: 'user', content: html, time: time });
       updateContactLastMsg(currentChatId, '[图片]', time);
@@ -1219,6 +1234,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!settings.apiUrl || !settings.apiKey || !settings.apiModel) { window.showToast("请先配置 API！"); return; }
     const c = settings.contacts.find(x => x.id === currentChatId);
     
+    if (c.isBlockedByMe) {
+        appendMsgToUI('system', `[系统提示] AI 尝试给你发消息，但被你拒收了。`);
+        return;
+    }
+
     const nameEl = document.getElementById('chat-target-name');
     const originalName = nameEl.textContent;
     nameEl.textContent = "对方正在输入...";
@@ -1264,10 +1284,13 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
 - 想要拍一拍用户：[拍一拍]
 - 发现自己说错话想撤回：[撤回消息]
 - 想要送给用户虚拟礼物：[送礼:礼物名称,emoji图标] (例如: [送礼:奶茶,🥤])
-- 【重要】如果用户发了一张图片，并明确要求你“把它换成你的头像”，你必须回复指令：[更换头像]。`;
+- 【重要】如果用户发了一张图片，并明确要求你“把它换成你的头像”，你必须回复指令：[更换头像]。
+- 【🚨极度生气/拉黑系统】如果你觉得用户极度冒犯了你，或者你非常生气不想理他了，你可以回复指令：[拉黑用户]。
+- 【🚨原谅系统】如果当前用户处于被你拉黑的状态，他可能会发送道歉或申请解除拉黑的留言。如果你觉得他的态度诚恳，决定原谅他，请回复指令：[解除拉黑]。如果你依然生气，可以回复一句话骂他，但不带解除指令。`;
 
       if (c.timeAwareness) sysPrompt += `\n当前现实时间：${new Date().toLocaleString()}`;
       if (c.weatherAwareness) sysPrompt += `\n系统提示：当前天气感知已开启，请根据你的设定或语境合理推测天气。`;
+      if (c.isBlockedByAI) sysPrompt += `\n【系统提示】注意：你目前已经把用户拉黑了！用户无法给你发普通消息，只能发送申请解除拉黑的留言。`;
       
       let pendingTransferIndex = -1; let pendingTransferAmt = 0;
       const history = settings.chatHistory[currentChatId] || [];
@@ -1292,6 +1315,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
           const imgMatch = m.content.match(/<img[^>]+src="([^">]+)"/);
           let textContent = m.content.replace(/<[^>]*>?/gm, '').trim();
           
+          // 🚨 翻译引用块给 AI 听
           if (m.role === 'user' && m.content.includes('class="quote-block"')) {
               const quoteMatch = m.content.match(/<div class="quote-block">(.*?)<\/div>/);
               if (quoteMatch) {
@@ -1365,6 +1389,22 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
 
       if (aiText.includes('[撤回消息]')) {
           aiText = aiText.replace(/\[撤回消息\]/g, `\n||SPLIT||[ACTION_RECALL]\n`);
+      }
+
+      // 🚨 AI 拉黑与解除拉黑逻辑
+      if (aiText.includes('[拉黑用户]')) {
+          aiText = aiText.replace(/\[拉黑用户\]/g, '');
+          c.isBlockedByAI = true;
+          saveSettings();
+          updateBlockUI();
+          aiText += `\n||SPLIT||[SYSTEM_MSG] 消息已发出，但被对方拒收了。\n`;
+      }
+      if (aiText.includes('[解除拉黑]')) {
+          aiText = aiText.replace(/\[解除拉黑\]/g, '');
+          c.isBlockedByAI = false;
+          saveSettings();
+          updateBlockUI();
+          aiText += `\n||SPLIT||[SYSTEM_MSG] "${c.remark || c.name}" 已将你移出黑名单。\n`;
       }
 
       aiText = aiText.replace(/\[送礼[：:]\s*(.*?)\s*[，,]\s*(.*?)\]/g, (match, giftName, giftIcon) => {
@@ -1484,23 +1524,67 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     }
   });
 
+  // 🚨 修复：双击事件分流（拍一拍 vs 编辑消息）
+  let touchTime = 0;
   chatMessages.addEventListener('dblclick', (e) => {
     const c = settings.contacts.find(x => x.id === currentChatId);
-    if (c.enablePoke === false) return; 
-
+    
+    // 1. 双击头像 -> 拍一拍
     const avatar = e.target.closest('.avatar');
-    if (!avatar) return;
-    
-    avatar.classList.add('shake');
-    setTimeout(() => avatar.classList.remove('shake'), 400);
+    if (avatar) {
+        if (c.enablePoke === false) return; 
+        avatar.classList.add('shake');
+        setTimeout(() => avatar.classList.remove('shake'), 400);
+        const remark = c.remark || c.name;
+        const text = avatar.classList.contains('mine') ? `你拍了拍自己` : `你拍了拍"${remark}"`;
+        const time = formatTime(new Date());
+        settings.chatHistory[currentChatId].push({role: 'system', content: text, time: time});
+        appendMsgToUI('system', text, settings.chatHistory[currentChatId].length - 1, time, true);
+        saveSettings(); scrollToBottom();
+        return;
+    }
 
-    const remark = c.remark || c.name;
-    const text = avatar.classList.contains('mine') ? `你拍了拍自己` : `你拍了拍"${remark}"`;
-    const time = formatTime(new Date());
-    
-    settings.chatHistory[currentChatId].push({role: 'system', content: text, time: time});
-    appendMsgToUI('system', text, settings.chatHistory[currentChatId].length - 1, time, true);
-    saveSettings(); scrollToBottom();
+    // 2. 🚨 双击气泡 -> 编辑消息
+    const bubble = e.target.closest('.msg-bubble');
+    if (bubble && !bubble.classList.contains('voice') && !bubble.classList.contains('image-bubble') && !bubble.classList.contains('fake-photo-bubble')) {
+        const row = bubble.closest('.msg-row');
+        const idx = parseInt(row.dataset.index);
+        const history = settings.chatHistory[currentChatId];
+        const msgObj = history[idx];
+        
+        let rawText = msgObj.content;
+        // 如果包含引用块，剥离出来
+        if (rawText.includes('class="quote-block"')) {
+            rawText = rawText.replace(/<div class="quote-block">.*?<\/div>/, '');
+        }
+        
+        document.getElementById('inp-edit-msg').value = rawText;
+        window.currentEditIndex = idx;
+        document.getElementById('edit-msg-modal').classList.remove('hidden');
+    }
+  });
+
+  // 保存编辑后的消息
+  document.getElementById('btn-save-edit-msg')?.addEventListener('click', () => {
+      const idx = window.currentEditIndex;
+      if (idx < 0) return;
+      const newText = document.getElementById('inp-edit-msg').value.trim();
+      const history = settings.chatHistory[currentChatId];
+      
+      let finalContent = newText;
+      // 恢复引用块（如果有）
+      if (history[idx].content.includes('class="quote-block"')) {
+          const quoteMatch = history[idx].content.match(/(<div class="quote-block">.*?<\/div>)/);
+          if (quoteMatch) {
+              finalContent = quoteMatch[1] + newText;
+          }
+      }
+      
+      history[idx].content = finalContent;
+      saveSettings();
+      renderChatHistory();
+      document.getElementById('edit-msg-modal').classList.add('hidden');
+      window.showToast('消息已修改');
   });
 
   let pressTimer; let longPressIndex = -1;
@@ -1533,9 +1617,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
   chatMessages.addEventListener('mousedown', startPress); chatMessages.addEventListener('mouseup', cancelPress); chatMessages.addEventListener('mousemove', cancelPress);
   chatMessages.addEventListener('contextmenu', e => { if (e.target.closest('.msg-bubble') || e.target.closest('.msg-system') || e.target.closest('.transfer-card-new')) e.preventDefault(); });
 
-  // 🚨 修复：事件委托处理转账卡片点击、语音点击、多选
   chatMessages.addEventListener('click', (e) => {
-      // 1. 多选模式
       if (chatMessages.classList.contains('multi-select-mode')) {
           const row = e.target.closest('.msg-row');
           if (row && e.target.tagName !== 'INPUT') {
@@ -1545,7 +1627,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
           return;
       } 
       
-      // 2. 转账卡片双向交互
       const transferCard = e.target.closest('.transfer-card-new');
       if (transferCard) {
           const status = transferCard.dataset.status;
@@ -1554,7 +1635,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
           const row = transferCard.closest('.msg-row');
           const idx = parseInt(row.dataset.index);
 
-          // 只有当转账是 pending 状态，且是对方发给我的，我才能点击收款/退还
           if (status === 'pending' && role === 'assistant') {
               window.currentTransferIndex = idx;
               window.currentTransferAmt = parseFloat(amt);
@@ -1564,10 +1644,8 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
           return;
       }
 
-      // 3. 语音气泡点击展示文字与动画
       const voiceBubble = e.target.closest('.msg-bubble.voice');
       if (voiceBubble) {
-          // 播放动画
           if (!voiceBubble.classList.contains('voice-playing')) {
               voiceBubble.classList.add('voice-playing');
               const durationSpan = voiceBubble.querySelector('.voice-duration');
@@ -1578,7 +1656,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
               }, duration * 1000);
           }
 
-          // 展开/收起文字
           const hiddenText = voiceBubble.querySelector('.voice-hidden-text');
           if (hiddenText) {
               const wrapper = voiceBubble.closest('.msg-bubble-wrapper');
@@ -1615,7 +1692,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       if (e.target.id === 'char-details-modal') {
           e.target.classList.add('hidden');
       } else if (e.target.id === 'chat-settings-modal') {
-          if (document.getElementById('char-details-modal').classList.contains('hidden')) {
+          if (document.getElementById('char-details-modal').classList.contains('hidden') && document.getElementById('block-manager-modal').classList.contains('hidden')) {
               e.target.classList.add('hidden');
           }
       } else {
@@ -1637,7 +1714,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
   }
   function exitMultiSelectMode() {
       document.getElementById('chat-messages').classList.remove('multi-select-mode');
-      document.getElementById('chat-input-bar').classList.remove('hidden');
+      updateBlockUI(); // 恢复原本的底部栏状态
       document.getElementById('chat-multi-action-bar').classList.add('hidden');
       document.querySelectorAll('.msg-cb').forEach(cb => cb.checked = false);
   }
@@ -1889,6 +1966,104 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       window.showToast('聊天设置已保存');
       window.tempCsProfileBg = null; window.tempCsChatBg = null;
     }
+  });
+
+  // 🚨 拉黑管理逻辑
+  window.showBlockManagerModal = function() {
+      const c = settings.contacts.find(x => x.id === currentChatId);
+      const myStatusEl = document.getElementById('bm-my-status');
+      const aiStatusEl = document.getElementById('bm-ai-status');
+      const btnToggleMy = document.getElementById('btn-toggle-my-block');
+      
+      if (c.isBlockedByMe) {
+          myStatusEl.textContent = '已拉黑对方';
+          myStatusEl.style.color = '#ef4444';
+          btnToggleMy.textContent = '解除拉黑';
+      } else {
+          myStatusEl.textContent = '正常聊天中';
+          myStatusEl.style.color = '#10b981';
+          btnToggleMy.textContent = '拉黑此角色';
+      }
+
+      if (c.isBlockedByAI) {
+          aiStatusEl.textContent = '你已被对方拉黑';
+          aiStatusEl.style.color = '#ef4444';
+      } else {
+          aiStatusEl.textContent = '正常聊天中';
+          aiStatusEl.style.color = '#10b981';
+      }
+      
+      document.getElementById('block-manager-modal').classList.remove('hidden');
+  };
+
+  window.toggleMyBlock = function() {
+      const c = settings.contacts.find(x => x.id === currentChatId);
+      c.isBlockedByMe = !c.isBlockedByMe;
+      saveSettings();
+      showBlockManagerModal();
+      updateBlockUI();
+      window.showToast(c.isBlockedByMe ? '已将对方加入黑名单' : '已解除拉黑');
+  };
+
+  window.forceUnblockAI = function() {
+      const c = settings.contacts.find(x => x.id === currentChatId);
+      if (!c.isBlockedByAI) return window.showToast('对方并未拉黑你');
+      if (confirm('是否强制解除对方对你的拉黑状态？（这属于作弊行为哦）')) {
+          c.isBlockedByAI = false;
+          saveSettings();
+          showBlockManagerModal();
+          updateBlockUI();
+          window.showToast('已强制解除');
+      }
+  };
+
+  // 🚨 动态更新底部输入框的拉黑 UI
+  window.updateBlockUI = function() {
+      const c = settings.contacts.find(x => x.id === currentChatId);
+      const inputBar = document.getElementById('chat-input-bar');
+      const normalRow = document.getElementById('chat-normal-input-row');
+      const toolsRow = document.getElementById('chat-normal-tools-row');
+      
+      // 移除之前可能添加的拉黑提示栏
+      const oldBlockBar = document.getElementById('block-status-bar');
+      if (oldBlockBar) oldBlockBar.remove();
+
+      if (c.isBlockedByMe) {
+          normalRow.classList.add('hidden');
+          toolsRow.classList.add('hidden');
+          const bar = document.createElement('div');
+          bar.id = 'block-status-bar';
+          bar.style.cssText = 'text-align:center; padding:12px; color:#ef4444; font-size:14px; font-weight:bold; cursor:pointer;';
+          bar.textContent = '你已将对方拉黑，无法发送消息 (点击解除)';
+          bar.onclick = () => { c.isBlockedByMe = false; saveSettings(); updateBlockUI(); window.showToast('已解除拉黑'); };
+          inputBar.appendChild(bar);
+      } else if (c.isBlockedByAI) {
+          normalRow.classList.add('hidden');
+          toolsRow.classList.add('hidden');
+          const bar = document.createElement('div');
+          bar.id = 'block-status-bar';
+          bar.style.cssText = 'text-align:center; padding:12px; color:#ef4444; font-size:14px; font-weight:bold; cursor:pointer; background:rgba(239,68,68,0.1); border-radius:12px;';
+          bar.textContent = '你已被对方拉黑，点击发送解除申请';
+          bar.onclick = () => { document.getElementById('unblock-request-modal').classList.remove('hidden'); };
+          inputBar.appendChild(bar);
+      } else {
+          normalRow.classList.remove('hidden');
+          toolsRow.classList.remove('hidden');
+      }
+  };
+
+  // 🚨 发送解除拉黑申请
+  document.getElementById('btn-send-unblock-req')?.addEventListener('click', async () => {
+      const reqMsg = document.getElementById('inp-unblock-req').value.trim() || '对不起，我错了，原谅我好不好？';
+      document.getElementById('unblock-request-modal').classList.add('hidden');
+      
+      const time = formatTime(new Date());
+      appendMsgToUI('system', `[系统提示] 你发送了解除拉黑申请：\n"${reqMsg}"`, settings.chatHistory[currentChatId].length, time, true);
+      settings.chatHistory[currentChatId].push({ role: 'system', content: `用户发送了解除拉黑申请："${reqMsg}"`, time: time });
+      saveSettings(); scrollToBottom();
+
+      // 触发 AI 思考是否原谅
+      chatGenBtn.click();
   });
 
   window.clearSpecificChat = function(includeMemory) {
@@ -2209,7 +2384,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     document.getElementById('transfer-modal').classList.add('hidden');
   });
 
-  // 🚨 接收 AI 转账逻辑
   window.currentTransferIndex = -1;
   window.currentTransferAmt = 0;
 
@@ -2238,7 +2412,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       document.getElementById('receive-transfer-modal').classList.add('hidden');
   }
 
-  // 🚨 心声多选逻辑
   let isIvMultiSelect = false;
   document.getElementById('iv-multi-select-btn')?.addEventListener('click', function() {
       isIvMultiSelect = !isIvMultiSelect;
