@@ -141,6 +141,7 @@ document.addEventListener('DOMContentLoaded', function() {
     root.style.setProperty('--color-card-bg', `rgba(255, 255, 255, ${settings.alphaCard / 100})`);
     root.style.setProperty('--color-dock-bg', `rgba(255, 255, 255, ${settings.alphaDock / 100})`);
 
+    // 🚨 修复：字体自动解析逻辑
     if (settings.fontUrl) {
       if (settings.fontUrl.endsWith('.css') || settings.fontUrl.includes('fonts.googleapis.com')) {
         let link = document.getElementById('user-font-link');
@@ -153,9 +154,14 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
     
-    // 🚨 修复：字体回退机制增强，防止字体失效
-    if (settings.fontFamily) {
-        root.style.setProperty('--font-main', `${settings.fontFamily}, 'CustomUserFont', system-ui, -apple-system, sans-serif`);
+    let activeFontFamily = settings.fontFamily;
+    if (!activeFontFamily && settings.fontUrl && settings.fontUrl.includes('family=')) {
+        const match = settings.fontUrl.match(/family=([^&:]+)/);
+        if (match) activeFontFamily = match[1].replace(/\+/g, ' ').split(':')[0];
+    }
+
+    if (activeFontFamily) {
+        root.style.setProperty('--font-main', `'${activeFontFamily}', 'CustomUserFont', system-ui, -apple-system, sans-serif`);
     } else {
         root.style.setProperty('--font-main', `'CustomUserFont', system-ui, -apple-system, sans-serif`);
     }
@@ -1008,9 +1014,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // 🚨 修复：移除导致死循环的 visualViewport 监听器
-  // if (window.visualViewport) { ... }  <-- 这段代码已移除
-
   chatInput.addEventListener('focus', () => { 
     setTimeout(() => { window.scrollTo(0, 0); scrollToBottom(); }, 300); 
   });
@@ -1313,7 +1316,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       });
 
       aiText = aiText.replace(/\[转账[：:]\s*(\d+(\.\d+)?)\s*[，,]\s*(.*?)\]/g, (match, amt, _, note) => {
-          const tHtml = createTransferCardHTML(amt, note, 'pending', 'assistant', formatTime(new Date()));
+          const tHtml = window.createTransferCardHTML(amt, note, 'pending', 'assistant', formatTime(new Date()));
           return `\n||SPLIT||${tHtml}\n`;
       });
 
@@ -1853,6 +1856,376 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
           } catch(err) { window.showToast('JSON 格式错误！'); }
       };
       reader.readAsText(file);
+  });
+
+  // ================== 🚨 修复补充：缺失的弹窗和面板切换逻辑 ==================
+
+  // 🎵 1. 音乐播放器相关
+  window.showMusicModal = function() {
+    document.getElementById('inp-music-title').value = settings.music.title || '';
+    document.getElementById('inp-music-artist').value = settings.music.artist || '';
+    document.getElementById('inp-music-url').value = settings.music.audio && settings.music.audio.startsWith('http') ? settings.music.audio : '';
+    document.getElementById('music-modal').classList.remove('hidden');
+  };
+
+  let tempMusicCover = '';
+  let tempMusicAudio = '';
+  document.getElementById('inp-music-cover')?.addEventListener('change', e => {
+    fileToBase64Compressed(e.target.files[0], res => tempMusicCover = res);
+  });
+  document.getElementById('inp-music-file')?.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => tempMusicAudio = event.target.result;
+      reader.readAsDataURL(file);
+    }
+  });
+
+  document.getElementById('btn-save-music')?.addEventListener('click', () => {
+    settings.music.title = document.getElementById('inp-music-title').value || '未知歌曲';
+    settings.music.artist = document.getElementById('inp-music-artist').value || '未知歌手';
+    const url = document.getElementById('inp-music-url').value.trim();
+    
+    if (tempMusicCover) settings.music.cover = tempMusicCover;
+    if (url) {
+        settings.music.audio = url;
+    } else if (tempMusicAudio) {
+        settings.music.audio = tempMusicAudio;
+    }
+    
+    saveSettings();
+    applySettings(); // 更新首页 UI
+    document.getElementById('music-modal').classList.add('hidden');
+    window.showToast('音乐设置已保存');
+  });
+
+  window.toggleMusicPlay = function() {
+    const audio = document.getElementById('sys-audio-player');
+    const btn = document.getElementById('btn-play-pause');
+    const disc = document.getElementById('music-cover-disp');
+    if (!audio.src || audio.src === window.location.href) {
+      window.showToast('请先长按或点击设置音乐文件');
+      return;
+    }
+    if (audio.paused) {
+      audio.play();
+      btn.classList.add('playing');
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+      disc.classList.add('playing');
+    } else {
+      audio.pause();
+      btn.classList.remove('playing');
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+      disc.classList.remove('playing');
+    }
+  };
+
+  // 📅 2. 纪念日相关
+  window.showAnniModal = function() {
+    document.getElementById('inp-anni-title').value = settings.widgetAnni.title || '';
+    document.getElementById('inp-anni-date').value = settings.widgetAnni.date || '';
+    document.getElementById('anni-modal').classList.remove('hidden');
+  };
+
+  document.getElementById('btn-save-anni')?.addEventListener('click', () => {
+    settings.widgetAnni.title = document.getElementById('inp-anni-title').value || '纪念日';
+    settings.widgetAnni.date = document.getElementById('inp-anni-date').value;
+    saveSettings();
+    applySettings();
+    document.getElementById('anni-modal').classList.add('hidden');
+    window.showToast('纪念日已保存');
+  });
+
+  // 💬 3. 聊天界面底部面板切换 (表情包与更多功能)
+  window.toggleStickerPanel = function() {
+    const panel = document.getElementById('chat-sticker-panel');
+    const extra = document.getElementById('chat-extra-menu');
+    if (!panel.classList.contains('hidden')) {
+      panel.classList.add('hidden');
+    } else {
+      extra.classList.add('hidden');
+      renderStickerPanel(); // 渲染表情包
+      panel.classList.remove('hidden');
+    }
+  };
+
+  window.toggleExtraMenu = function() {
+    const panel = document.getElementById('chat-sticker-panel');
+    const extra = document.getElementById('chat-extra-menu');
+    if (!extra.classList.contains('hidden')) {
+      extra.classList.add('hidden');
+    } else {
+      panel.classList.add('hidden');
+      extra.classList.remove('hidden');
+    }
+  };
+
+  // 😊 4. 表情包管理与发送
+  window.showStickerManagerModal = function() {
+    document.getElementById('chat-sticker-panel').classList.add('hidden');
+    renderStickerManagerList();
+    document.getElementById('sticker-manager-modal').classList.remove('hidden');
+  };
+
+  document.getElementById('btn-add-sticker')?.addEventListener('click', () => {
+    const url = document.getElementById('inp-sticker-url').value.trim();
+    const group = document.getElementById('inp-sticker-group').value.trim() || '默认';
+    if (!url) return window.showToast('请输入图片URL');
+    settings.stickers.push({ group, url });
+    saveSettings();
+    document.getElementById('inp-sticker-url').value = '';
+    renderStickerManagerList();
+    window.showToast('表情包已添加');
+  });
+
+  function renderStickerManagerList() {
+    const list = document.getElementById('sticker-manager-list');
+    list.innerHTML = '';
+    settings.stickers.forEach((s, idx) => {
+      const img = document.createElement('img');
+      img.src = s.url;
+      img.style.cssText = 'width: 50px; height: 50px; object-fit: contain; background: #eee; border-radius: 8px; cursor: pointer;';
+      img.title = `点击删除 [${s.group}]`;
+      img.onclick = () => {
+        if(confirm(`确定删除该表情包吗？`)) {
+          settings.stickers.splice(idx, 1);
+          saveSettings();
+          renderStickerManagerList();
+        }
+      };
+      list.appendChild(img);
+    });
+  }
+
+  function renderStickerPanel() {
+    const tabs = document.getElementById('sticker-tabs');
+    const list = document.getElementById('sticker-list');
+    tabs.innerHTML = ''; list.innerHTML = '';
+    
+    const groups = [...new Set(settings.stickers.map(s => s.group))];
+    if (groups.length === 0) {
+      list.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#999;font-size:12px;padding:20px;">暂无表情包，请点击下方管理添加</div>';
+      return;
+    }
+    
+    let activeGroup = groups[0];
+    
+    const renderList = (groupName) => {
+      list.innerHTML = '';
+      settings.stickers.filter(s => s.group === groupName).forEach(s => {
+        const div = document.createElement('div');
+        div.className = 'sticker-item';
+        div.style.backgroundImage = `url('${s.url}')`;
+        div.onclick = () => {
+          const time = formatTime(new Date());
+          const html = `<img src="${s.url}" class="image-bubble" alt="表情包">`;
+          const c = settings.contacts.find(x => x.id === currentChatId);
+          appendMsgToUI('user', html, settings.chatHistory[currentChatId].length, time, c.timestamps !== false);
+          settings.chatHistory[currentChatId].push({ role: 'user', content: html, time: time });
+          updateContactLastMsg(currentChatId, '[表情包]', time);
+          saveSettings();
+          scrollToBottom();
+          document.getElementById('chat-sticker-panel').classList.add('hidden');
+        };
+        list.appendChild(div);
+      });
+    };
+
+    groups.forEach(g => {
+      const btn = document.createElement('button');
+      btn.className = `sticker-tab ${g === activeGroup ? 'active' : ''}`;
+      btn.textContent = g;
+      btn.onclick = () => {
+        document.querySelectorAll('.sticker-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderList(g);
+      };
+      tabs.appendChild(btn);
+    });
+    renderList(activeGroup);
+  }
+
+  // 🎙️ 5. 假装发语音
+  window.showFakeVoiceModal = function() {
+    document.getElementById('chat-extra-menu').classList.add('hidden');
+    document.getElementById('inp-fake-voice').value = '';
+    document.getElementById('fake-voice-modal').classList.remove('hidden');
+  };
+
+  document.getElementById('btn-send-fake-voice')?.addEventListener('click', () => {
+    const text = document.getElementById('inp-fake-voice').value.trim() || '语音消息';
+    const duration = document.getElementById('inp-voice-duration').value || 3;
+    const vHtml = `<svg viewBox="0 0 24 24" class="voice-icon" fill="currentColor"><path d="M12 3v18m-4-14v10m8-10v10m-12-6v2m16-2v2"/></svg><span class="voice-duration">${duration}"</span><span class="voice-hidden-text" style="display:none;">${text}</span>`;
+    const time = formatTime(new Date());
+    const c = settings.contacts.find(x => x.id === currentChatId);
+    appendMsgToUI('user', vHtml, settings.chatHistory[currentChatId].length, time, c.timestamps !== false);
+    
+    // 发给AI时，告诉AI这是语音
+    settings.chatHistory[currentChatId].push({ role: 'user', content: vHtml, time: time });
+    updateContactLastMsg(currentChatId, '[语音]', time);
+    saveSettings(); scrollToBottom();
+    document.getElementById('fake-voice-modal').classList.add('hidden');
+  });
+
+  // 📷 6. 假装拍照
+  window.showFakePhotoModal = function() {
+    document.getElementById('chat-extra-menu').classList.add('hidden');
+    document.getElementById('inp-fake-photo').value = '';
+    document.getElementById('fake-photo-modal').classList.remove('hidden');
+  };
+
+  document.getElementById('btn-send-fake-photo')?.addEventListener('click', () => {
+    const desc = document.getElementById('inp-fake-photo').value.trim() || '一张照片';
+    const pHtml = `<svg class="fake-photo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg><span>[照片] ${desc}</span>`;
+    const time = formatTime(new Date());
+    const c = settings.contacts.find(x => x.id === currentChatId);
+    appendMsgToUI('user', pHtml, settings.chatHistory[currentChatId].length, time, c.timestamps !== false);
+    settings.chatHistory[currentChatId].push({ role: 'user', content: pHtml, time: time });
+    
+    updateContactLastMsg(currentChatId, '[图片]', time);
+    saveSettings(); scrollToBottom();
+    document.getElementById('fake-photo-modal').classList.add('hidden');
+  });
+
+  // 💸 7. 发起转账
+  window.showTransferModal = function() {
+    document.getElementById('chat-extra-menu').classList.add('hidden');
+    document.getElementById('inp-transfer-amount').value = '';
+    document.getElementById('inp-transfer-note').value = '转账给你';
+    document.getElementById('transfer-modal').classList.remove('hidden');
+  };
+
+  window.createTransferCardHTML = function(amount, note, status = 'pending', role = 'user', time = '') {
+    let statusText = '请收款';
+    let opacity = '1';
+    if (status === 'received') { statusText = '已收款'; opacity = '0.7'; }
+    if (status === 'refunded') { statusText = '已退还'; opacity = '0.7'; }
+    return `
+    <div class="transfer-card-new" data-status="${status}" data-amount="${amount}" style="opacity: ${opacity};">
+      <div class="transfer-card-top">
+        <div class="transfer-icon-area"><div class="transfer-icon-circle">¥</div></div>
+        <div class="transfer-content">
+          <div class="transfer-amount">¥${amount}</div>
+          <div class="transfer-note">${note}</div>
+        </div>
+      </div>
+      <div class="transfer-time">${statusText}</div>
+    </div>`;
+  };
+
+  document.getElementById('btn-send-transfer')?.addEventListener('click', () => {
+    const amt = document.getElementById('inp-transfer-amount').value;
+    const note = document.getElementById('inp-transfer-note').value || '转账给你';
+    if (!amt || isNaN(amt) || parseFloat(amt) <= 0) return window.showToast('请输入有效金额');
+    
+    const currentWallet = parseFloat(settings.wallet.val.replace(/[^\d.-]/g, '')) || 0;
+    if (currentWallet < parseFloat(amt)) return window.showToast('钱包余额不足！请先去"我"的页面充值');
+
+    updateWallet(-parseFloat(amt), `转账给 ${document.getElementById('chat-target-name').textContent}`);
+
+    const tHtml = window.createTransferCardHTML(amt, note, 'pending', 'user', formatTime(new Date()));
+    const time = formatTime(new Date());
+    const c = settings.contacts.find(x => x.id === currentChatId);
+    
+    appendMsgToUI('user', tHtml, settings.chatHistory[currentChatId].length, time, c.timestamps !== false);
+    settings.chatHistory[currentChatId].push({ role: 'user', content: tHtml, time: time });
+    
+    updateContactLastMsg(currentChatId, '[转账]', time);
+    saveSettings(); scrollToBottom();
+    document.getElementById('transfer-modal').classList.add('hidden');
+  });
+
+  // 📖 8. 心声记录簿
+  window.renderInnerVoiceList = function() {
+    const list = document.getElementById('iv-list');
+    list.innerHTML = '';
+    const c = settings.contacts.find(x => x.id === currentChatId);
+    if (!c.innerVoices || c.innerVoices.length === 0) {
+      list.innerHTML = '<div style="text-align:center; color:#999; padding: 40px 0;">暂无心声记录，点击右上角生成</div>';
+      return;
+    }
+    // 倒序渲染
+    [...c.innerVoices].reverse().forEach((iv, idx) => {
+      const card = document.createElement('div');
+      card.className = 'iv-card';
+      card.innerHTML = `
+        <div class="iv-card-header">
+          <span class="iv-time">${iv.time}</span>
+          <span class="iv-mood">${iv.mood || '平静'}</span>
+        </div>
+        <div class="iv-section">
+          <span class="iv-label">客观事实</span>
+          <span class="iv-text">${iv.fact}</span>
+        </div>
+        <div class="iv-section">
+          <span class="iv-label">内心独白</span>
+          <span class="iv-text">"${iv.thought}"</span>
+        </div>
+      `;
+      list.appendChild(card);
+    });
+  };
+
+  document.getElementById('btn-inner-voice')?.addEventListener('click', () => {
+    window.renderInnerVoiceList();
+    document.getElementById('inner-voice-modal').classList.remove('hidden');
+  });
+
+  document.getElementById('iv-close')?.addEventListener('click', () => {
+    document.getElementById('inner-voice-modal').classList.add('hidden');
+  });
+
+  document.getElementById('iv-regen')?.addEventListener('click', async () => {
+    if (!settings.apiUrl || !settings.apiKey || !settings.apiModel) return window.showToast("请先配置 API！");
+    const c = settings.contacts.find(x => x.id === currentChatId);
+    const history = settings.chatHistory[currentChatId] || [];
+    if (history.length === 0) return window.showToast("暂无聊天记录可生成心声");
+
+    const btn = document.getElementById('iv-regen');
+    btn.textContent = '感知中...'; btn.style.opacity = '0.7';
+
+    try {
+      const recentHistory = history.slice(-10).map(m => `${m.role === 'user' ? '用户' : c.name}: ${m.content.replace(/<[^>]*>?/gm, '')}`).join('\n');
+      const prompt = `你现在是${c.name}。根据以下最近的聊天记录，推测你此时此刻的内心活动。
+请严格返回 JSON 格式数据，不要有任何其他多余文本：
+{
+  "mood": "当前的情绪状态（如：吃醋、开心、失落，2-4个字）",
+  "fact": "用第三人称客观描述刚刚发生了什么事（如：用户刚刚拒绝了我的邀请）",
+  "thought": "用第一人称写下你此时最真实的内心独白（如：可恶，他居然真的拒绝了，好气哦！）"
+}
+
+聊天记录：
+${recentHistory}`;
+
+      const res = await fetch(`${settings.apiUrl}/chat/completions`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${settings.apiKey}` },
+        body: JSON.stringify({ 
+            model: settings.apiModel, 
+            messages: [{role: 'user', content: prompt}], 
+            temperature: 0.8,
+            response_format: { type: "json_object" }
+        })
+      });
+      
+      const data = await res.json();
+      const result = JSON.parse(data.choices[0].message.content);
+      
+      if (!c.innerVoices) c.innerVoices = [];
+      c.innerVoices.push({
+        time: formatTime(new Date()) + ' ' + new Date().toLocaleDateString(),
+        mood: result.mood, fact: result.fact, thought: result.thought
+      });
+      
+      saveSettings();
+      window.renderInnerVoiceList();
+      window.showToast('心声已记录');
+    } catch (err) {
+      window.showToast('生成心声失败，请检查API或稍后再试');
+      console.error(err);
+    } finally {
+      btn.textContent = '生成心声'; btn.style.opacity = '1';
+    }
   });
 
   console.log('✅ 系统初始化完成！');
