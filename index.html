@@ -24,7 +24,7 @@
     <!-- 顶部状态栏 -->
     <header class="status-bar glass-card" id="sys-status-bar">
       <div class="status-left"><span class="status-time" id="status-time">12:00</span></div>
-      <div class="status-center"><span class="status-title">…𝗱𝗼𝗻'𝘁 𝗮𝘀𝗸 (⸝⸝•̀⸝⸝•́⸝⸝)˚. ˚˛ ♡</span></div>
+      <div class="status-center"><span class="status-title">꒰১ 𝒦𝒾𝓉𝓉𝑒𝓃 𝒩𝑒𝒷𝓊𝓁𝒶 ໒꒱</span></div>
       <div class="status-right">
         <svg viewBox="0 0 24 24" class="icon" style="width:20px;height:20px;"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
       </div>
@@ -145,30 +145,9 @@
           </div>
         </div>
         
-        <!-- 通讯录占位 -->
+        <!-- 其他 Tab 占位 -->
         <div class="chat-tab-content hidden" id="chat-tab-contacts"><header class="sub-header"><button class="back-btn" data-back="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><polyline points="15 18 9 12 15 6"></polyline></svg></button><h2>通讯录</h2><div style="width:24px"></div></header><div class="sub-body"><div class="placeholder-card glass-card sys-card">通讯录功能占位</div></div></div>
-        
-        <!-- 朋友圈 (Moments) -->
-        <div class="chat-tab-content hidden" id="chat-tab-moments">
-          <header class="sub-header" style="position: absolute; background: transparent; border: none; box-shadow: none; backdrop-filter: none;">
-            <button class="back-btn" data-back="home" style="color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.5);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
-            <div style="flex:1"></div>
-            <button class="icon-button" onclick="showAddMomentModal()" style="color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.5);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg></button>
-          </header>
-          <div class="sub-body" style="padding: 0; background: #fff; min-height: 100%;">
-             <!-- 朋友圈封面 -->
-             <div class="moments-cover" id="moments-cover-disp" onclick="document.getElementById('inp-moments-cover').click()">
-                <div class="moments-user-info">
-                   <span class="moments-user-name" id="moments-user-name">名字</span>
-                   <div class="moments-user-avatar" id="moments-user-avatar"></div>
-                </div>
-             </div>
-             <input type="file" id="inp-moments-cover" accept="image/*" style="display:none;" />
-             
-             <!-- 动态列表 -->
-             <div id="moments-feed" style="padding: 20px 14px 80px; display:flex; flex-direction:column;"></div>
-          </div>
-        </div>
+        <div class="chat-tab-content hidden" id="chat-tab-moments"><header class="sub-header"><button class="back-btn" data-back="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><polyline points="15 18 9 12 15 6"></polyline></svg></button><h2>朋友圈</h2><div style="width:24px"></div></header><div class="sub-body"><div class="placeholder-card glass-card sys-card">朋友圈功能占位</div></div></div>
         
         <!-- “我”的个人主页 (Ins奶油风) -->
         <div class="chat-tab-content hidden" id="chat-tab-profile">
@@ -228,28 +207,28 @@
         </nav>
       </section>
 
-      <!-- ================= 具体的聊天房间 ================= -->
+      <!-- ================= 🚨 聊天房间全新 UI 重构 (Ins奶油风) ================= -->
       <section class="view view-chat-room hidden" data-view="chat-room" id="chat-room-view">
         <header class="chat-header">
-          <div class="chat-top-bar">
-            <button class="back-btn" data-back="chat" style="justify-self: start;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          <div class="chat-header-inner">
+            <button class="back-btn" data-back="chat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:22px;height:22px;"><polyline points="15 18 9 12 15 6"></polyline></svg>
             </button>
             <div class="chat-header-center">
-              <div class="header-status"><span class="status-dot"></span>在线</div>
-              <div class="header-avatars-row">
+              <div class="header-name-pill">
                 <div class="header-avatar" id="header-ai-avatar"></div>
                 <div class="header-name" id="chat-target-name">AI 助手</div>
                 <div class="header-avatar" id="header-user-avatar"></div>
               </div>
-              <div class="header-bio" id="chat-target-bio">点击设置修改签名</div>
+              <div class="header-status"><span class="status-dot"></span> 在线</div>
+              <div class="header-bio" id="chat-target-bio" style="display:none;">点击设置修改签名</div>
             </div>
             <div class="chat-header-actions">
               <button class="icon-button" id="btn-inner-voice" title="人物心声">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"></path></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"></path></svg>
               </button>
               <button class="icon-button" id="btn-chat-settings" title="聊天设置">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
               </button>
             </div>
           </div>
@@ -257,8 +236,45 @@
 
         <div class="chat-body" id="chat-messages"></div>
 
-        <!-- 🚨 聊天输入与工具栏 -->
+        <!-- 🚨 全新底部输入栏 (矩形圆角毛玻璃) -->
         <footer class="chat-input-bar" id="chat-input-bar">
+          
+          <div class="chat-input-inner">
+            <!-- 引用预览栏 -->
+            <div id="quote-preview-bar" class="hidden">
+              <div class="quote-preview-content">
+                <span class="quote-preview-label">回复：</span>
+                <span class="quote-preview-text" id="quote-preview-text"></span>
+              </div>
+              <button id="btn-close-quote" class="icon-button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+            </div>
+
+            <!-- 输入行 -->
+            <div class="chat-input-row" id="chat-normal-input-row">
+              <div class="input-pill">
+                <textarea id="chat-input" placeholder="message..." rows="1"></textarea>
+              </div>
+              <button class="chat-regen-btn" id="chat-regen-btn" title="重新生成">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
+              </button>
+              <button class="send-btn-text" id="chat-send-btn">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4l17.45-7.56c.81-.35.81-1.49 0-1.84L3.4 3.44c-.6-.26-1.18.28-.96.89l2.4 6.91c.09.26.32.45.6.48l10.3 1.14c.15.02.15.24 0 .26l-10.3 1.14c-.28.03-.51.22-.6.48l-2.4 6.91c-.22.61.36 1.15.96.89z"/></svg>
+              </button>
+              <button class="send-btn-ai" id="chat-generate-btn" title="让AI回复">
+                <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+              </button>
+            </div>
+
+            <!-- 工具栏 -->
+            <div class="chat-tools-row" id="chat-normal-tools-row">
+              <button class="tool-btn" onclick="showFakeVoiceModal()" title="语音"><svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg></button>
+              <button class="tool-btn" onclick="toggleStickerPanel()" title="表情包"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg></button>
+              <button class="tool-btn" onclick="document.getElementById('inp-send-image').click()" title="图片"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg></button>
+              <input type="file" id="inp-send-image" accept="image/*" style="display:none;" />
+              <button class="tool-btn" onclick="showTransferModal()" title="转账"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></button>
+              <button class="tool-btn" onclick="toggleExtraMenu()" title="更多"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg></button>
+            </div>
+          </div>
           
           <!-- 😊 表情包面板 -->
           <div class="chat-sticker-panel hidden glass-card" id="chat-sticker-panel">
@@ -285,39 +301,6 @@
               <div class="extra-item" onclick="showToast('陪伴开发中')"><div class="extra-icon-soft"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div><span>陪伴</span></div>
             </div>
           </div>
-
-          <!-- 🚨 引用预览栏 -->
-          <div id="quote-preview-bar" class="hidden">
-            <div class="quote-preview-content">
-              <span class="quote-preview-label">回复：</span>
-              <span class="quote-preview-text" id="quote-preview-text"></span>
-            </div>
-            <button id="btn-close-quote" class="icon-button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
-          </div>
-
-          <!-- 输入行 -->
-          <div class="chat-input-row" id="chat-normal-input-row">
-            <div class="input-pill">
-              <textarea id="chat-input" placeholder="message..." rows="1"></textarea>
-            </div>
-            <button class="chat-regen-btn" id="chat-regen-btn" title="重新生成">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
-            </button>
-            <button class="send-btn-text" id="chat-send-btn">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4l17.45-7.56c.81-.35.81-1.49 0-1.84L3.4 3.44c-.6-.26-1.18.28-.96.89l2.4 6.91c.09.26.32.45.6.48l10.3 1.14c.15.02.15.24 0 .26l-10.3 1.14c-.28.03-.51.22-.6.48l-2.4 6.91c-.22.61.36 1.15.96.89z"/></svg>
-            </button>
-            <button class="send-btn-ai" id="chat-generate-btn" title="让AI回复">
-              <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-            </button>
-          </div>
-          <div class="chat-tools-row" id="chat-normal-tools-row">
-            <button class="tool-btn" onclick="showFakeVoiceModal()" title="语音"><svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg></button>
-            <button class="tool-btn" onclick="toggleStickerPanel()" title="表情包"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg></button>
-            <button class="tool-btn" onclick="document.getElementById('inp-send-image').click()" title="图片"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg></button>
-            <input type="file" id="inp-send-image" accept="image/*" style="display:none;" />
-            <button class="tool-btn" onclick="showTransferModal()" title="转账"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></button>
-            <button class="tool-btn" onclick="toggleExtraMenu()" title="更多"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg></button>
-          </div>
         </footer>
 
         <!-- 🚨 多选底部操作栏 (默认隐藏) -->
@@ -329,19 +312,11 @@
 
       </section>
 
-      <!-- ================= 世界书页面 ================= -->
+      <!-- ================= 占位页面 ================= -->
       <section class="view view-worldbook hidden" data-view="worldbook">
-        <header class="sub-header">
-          <button class="back-btn" data-back="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
-          <h2>世界书</h2>
-          <button class="icon-button" onclick="showAddWorldbookModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
-        </header>
-        <div class="sub-body" id="worldbook-list-container" style="padding-top:10px; display:flex; flex-direction:column; gap:12px;">
-          <!-- JS 渲染 -->
-        </div>
+        <header class="sub-header"><button class="back-btn" data-back="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><polyline points="15 18 9 12 15 6"></polyline></svg></button><h2>世界书</h2><div style="width:24px"></div></header>
+        <div class="sub-body"><div class="placeholder-card glass-card">世界书功能占位</div></div>
       </section>
-
-      <!-- ================= 论坛页面 ================= -->
       <section class="view view-forum hidden" data-view="forum">
         <header class="sub-header"><button class="back-btn" data-back="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><polyline points="15 18 9 12 15 6"></polyline></svg></button><h2>论坛</h2><div style="width:24px"></div></header>
         <div class="sub-body"><div class="placeholder-card glass-card">论坛功能占位</div></div>
@@ -499,7 +474,7 @@
           <div style="position:relative; width:80%; margin:0 auto 12px;">
             <button class="btn-secondary" style="width:100%;">导入数据 (JSON)</button>
             <input type="file" id="btn-import" accept=".json" style="position:absolute; inset:0; opacity:0; cursor:pointer;" />
-                      </div>
+          </div>
           <button class="btn-secondary" id="btn-clear" style="width:80%; color:#ef4444;">清理所有缓存</button>
         </div>
       </section>
@@ -1086,63 +1061,6 @@
         <div style="display: flex; gap: 10px;">
           <button class="btn-secondary" id="btn-reject-ai-unblock" style="flex:1;">拒绝</button>
           <button class="btn-primary" id="btn-accept-ai-unblock" style="flex:1;">同意</button>
-        </div>
-      </section>
-    </div>
-  </div>
-
-  <!-- 🚨 世界书编辑弹窗 -->
-  <div class="modal-backdrop hidden" id="worldbook-modal">
-    <div class="modal">
-      <header class="modal-header">
-        <button class="btn-secondary btn-sm" onclick="document.getElementById('worldbook-modal').classList.add('hidden')">取消</button>
-        <h3 id="wb-modal-title">新建世界书</h3>
-        <button class="btn-primary btn-sm" id="btn-save-worldbook">保存</button>
-      </header>
-      <section class="modal-body">
-        <input type="hidden" id="inp-wb-id" />
-        <div class="form-group"><label>标题 (Title)</label><input type="text" id="inp-wb-title" class="sys-input" placeholder="例如: 魔法学院设定" /></div>
-        <div class="form-group">
-          <label>触发关键词 (英文逗号分隔)</label>
-          <input type="text" id="inp-wb-keys" class="sys-input" placeholder="例如: 魔法,魔杖,校长" />
-          <div style="font-size:11px; color:#999; margin-top:4px;">当聊天中出现这些词时，AI会自动参考此设定。</div>
-        </div>
-        <div class="form-group" style="display:flex; align-items:center; justify-content:space-between;">
-          <label style="margin:0;">全局始终生效</label>
-          <input type="checkbox" class="ios-toggle" id="inp-wb-global" />
-        </div>
-        <div class="form-group">
-          <label>详细设定内容</label>
-          <textarea id="inp-wb-content" class="sys-input" rows="6" placeholder="在这里详细描述世界观、规则、背景故事等..."></textarea>
-        </div>
-      </section>
-    </div>
-  </div>
-
-  <!-- 🚨 发布朋友圈弹窗 -->
-  <div class="modal-backdrop hidden" id="add-moment-modal">
-    <div class="modal">
-      <header class="modal-header">
-        <button class="btn-secondary btn-sm" onclick="document.getElementById('add-moment-modal').classList.add('hidden')">取消</button>
-        <h3>发布动态</h3>
-        <button class="btn-primary btn-sm" id="btn-publish-moment">发布</button>
-      </header>
-      <section class="modal-body">
-        <div class="form-group">
-          <label>发布者身份</label>
-          <select id="inp-moment-author" class="sys-input">
-            <option value="me">我 (我的主页身份)</option>
-            <!-- JS 动态填入 AI 角色 -->
-          </select>
-        </div>
-        <div class="form-group">
-          <label>文案内容</label>
-          <textarea id="inp-moment-text" class="sys-input" rows="4" placeholder="分享新鲜事..."></textarea>
-        </div>
-        <div class="form-group">
-          <label>配图 (可选)</label>
-          <input type="file" id="inp-moment-img" accept="image/*" class="sys-file" />
-          <div id="moment-img-preview" style="margin-top:10px; width:100%; height:120px; background-size:cover; background-position:center; border-radius:12px; display:none;"></div>
         </div>
       </section>
     </div>
