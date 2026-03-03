@@ -863,3 +863,82 @@ button, .card-clickable, .app-icon-button, .dock-icon-button, .chat-nav-item, .s
 .chat-body.hide-avatar .msg-bubble-wrapper { max-width: 88%; }
 .chat-body .avatar.small { width: var(--chat-avatar-size, 32px); height: var(--chat-avatar-size, 32px); transition: border-radius 0.3s, width 0.3s, height 0.3s; }
 .chat-body.square-avatar .avatar.small { border-radius: 12px; }
+/* ================== 🚨 朋友圈 (Moments) 仿微信/OS 样式 ================== */
+.moments-cover {
+  width: 100%; height: 280px;
+  background: #e2e8f0; background-size: cover !important; background-position: center !important;
+  position: relative; margin-bottom: 40px; cursor: pointer;
+}
+.moments-cover::after {
+  content: '点击更换封面'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.3); color: #fff; font-size: 14px; opacity: 0; transition: opacity 0.2s;
+}
+.moments-cover:hover::after { opacity: 1; }
+.moments-user-info {
+  position: absolute; right: 16px; bottom: -24px;
+  display: flex; align-items: center; gap: 16px;
+}
+.moments-user-name {
+  color: #fff; font-size: 18px; font-weight: 700; text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+  margin-bottom: 8px;
+}
+.moments-user-avatar {
+  width: 64px; height: 64px; border-radius: 12px;
+  background: #fff; background-size: cover !important; background-position: center !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.moment-card {
+  display: flex; gap: 12px; padding-bottom: 20px; margin-bottom: 20px;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+.moment-avatar {
+  width: 42px; height: 42px; border-radius: 8px; flex-shrink: 0;
+  background: #eee; background-size: cover !important; background-position: center !important;
+}
+.moment-content { flex: 1; min-width: 0; }
+.moment-name { font-size: 15px; font-weight: 600; color: #576b95; margin-bottom: 4px; }
+.moment-text { font-size: 14px; color: #333; line-height: 1.5; margin-bottom: 8px; word-break: break-word; }
+.moment-image {
+  max-width: 80%; max-height: 200px; border-radius: 8px;
+  object-fit: cover; margin-bottom: 8px; display: block;
+}
+.moment-footer { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #999; }
+.moment-actions { display: flex; gap: 12px; }
+.moment-actions span { cursor: pointer; transition: color 0.2s; }
+.moment-actions span:active { color: var(--color-accent); }
+.moment-comments {
+  margin-top: 10px; background: #f3f4f6; border-radius: 8px; padding: 10px;
+  position: relative;
+}
+.moment-comments::before {
+  content: ''; position: absolute; top: -10px; left: 16px;
+  border-width: 5px; border-style: solid; border-color: transparent transparent #f3f4f6 transparent;
+}
+.comment-item { font-size: 13px; line-height: 1.4; margin-bottom: 4px; }
+.comment-item:last-child { margin-bottom: 0; }
+.comment-name { color: #576b95; font-weight: 600; cursor: pointer; }
+
+/* ================== 🚨 世界书 (Worldbook) 卡片样式 ================== */
+.wb-card {
+  background: #fff; border-radius: 16px; padding: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.02);
+  display: flex; flex-direction: column; gap: 8px; position: relative;
+}
+.wb-header { display: flex; justify-content: space-between; align-items: center; }
+.wb-title { font-size: 15px; font-weight: 600; color: #333; display: flex; align-items: center; gap: 6px;}
+.wb-global-tag { font-size: 10px; background: #fef0f4; color: #d66a8c; padding: 2px 6px; border-radius: 4px; font-weight: 500;}
+.wb-keys { font-size: 12px; color: var(--color-accent); font-family: monospace; }
+.wb-content-preview {
+  font-size: 13px; color: #666; line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.wb-actions {
+  display: flex; gap: 10px; margin-top: 8px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 12px;
+}
+.wb-actions button {
+  flex: 1; background: #f8fafc; border: none; padding: 6px 0; border-radius: 8px;
+  font-size: 13px; color: #555; font-weight: 500; cursor: pointer; transition: background 0.2s;
+}
+.wb-actions button:active { background: #e2e8f0; }
+.wb-actions button.danger { color: #ef4444; }
