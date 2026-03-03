@@ -19,7 +19,7 @@ if (window.marked) {
 document.addEventListener('DOMContentLoaded', function() {
   console.log('✅ DOM已加载，开始初始化...');
 
-  const STORAGE_KEY = 'softphone-settings-v30'; // 升级版本号，防缓存
+  const STORAGE_KEY = 'softphone-settings-v31'; 
 
   const defaultSettings = {
     wallpaper: '', sticker: '', customCss: '',
@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', function() {
     try {
       let raw = await localforage.getItem(STORAGE_KEY);
       if (!raw) {
-          raw = localStorage.getItem('softphone-settings-v29') || await localforage.getItem('softphone-settings-v29'); 
+          raw = localStorage.getItem('softphone-settings-v30') || await localforage.getItem('softphone-settings-v30'); 
           if (raw) await localforage.setItem(STORAGE_KEY, raw);
       }
       if (!raw) return { ...defaultSettings };
@@ -143,13 +143,11 @@ document.addEventListener('DOMContentLoaded', function() {
     root.style.setProperty('--color-card-bg', `rgba(255, 255, 255, ${settings.alphaCard / 100})`);
     root.style.setProperty('--color-dock-bg', `rgba(255, 255, 255, ${settings.alphaDock / 100})`);
 
-    // 🚨 字体解析逻辑增强
     let styleTag = document.getElementById('user-font-face');
     if (!styleTag) { styleTag = document.createElement('style'); styleTag.id = 'user-font-face'; document.head.appendChild(styleTag); }
-    styleTag.textContent = ''; // 清空
+    styleTag.textContent = ''; 
 
     if (settings.fontBase64) {
-        // 如果有本地上传的字体
         styleTag.textContent = `@font-face { font-family: 'CustomUserFont'; src: url('${settings.fontBase64}'); font-weight: normal; font-style: normal; }`;
     } else if (settings.fontUrl) {
         if (settings.fontUrl.endsWith('.css') || settings.fontUrl.includes('fonts.googleapis.com')) {
@@ -331,6 +329,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   let isFavMultiSelect = false;
+  let isGiftMultiSelect = false;
 
   function renderProfilePage() {
       document.getElementById('profile-name-edit').textContent = settings.user.name;
@@ -409,23 +408,44 @@ document.addEventListener('DOMContentLoaded', function() {
           }
       }
 
+      // 🚨 礼物箱多选渲染逻辑
       const giftList = document.getElementById('gifts-list-container');
       if (giftList) {
           giftList.innerHTML = '';
-          settings.gifts.forEach(g => {
+          document.getElementById('gift-multi-action-bar').classList.toggle('hidden', !isGiftMultiSelect);
+          
+          let hasGift = false;
+          settings.gifts.forEach((g, idx) => {
               if (g.count > 0) {
+                  hasGift = true;
                   const item = document.createElement('div');
-                  item.className = 'gift-item card-clickable';
-                  item.onclick = () => showGiftDetail(g.id);
+                  item.className = `gift-item card-clickable ${isGiftMultiSelect ? 'selectable' : ''}`;
+                  item.style.position = 'relative';
+                  
+                  let cbHtml = isGiftMultiSelect ? `<div style="position:absolute; top:8px; right:8px;"><input type="checkbox" class="ios-checkbox gift-cb" value="${idx}"></div>` : '';
+                  
                   item.innerHTML = `
+                      ${cbHtml}
                       <div class="gift-icon">${g.icon}</div>
                       <div class="gift-name">${g.name}</div>
                       <div class="gift-count">x ${g.count}</div>
                   `;
+                  
+                  if (!isGiftMultiSelect) {
+                      item.onclick = () => showGiftDetail(g.id);
+                  } else {
+                      item.onclick = (e) => {
+                          if (e.target.tagName !== 'INPUT') {
+                              const cb = item.querySelector('.gift-cb');
+                              if (cb) cb.checked = !cb.checked;
+                          }
+                      };
+                  }
                   giftList.appendChild(item);
               }
           });
-          if (giftList.innerHTML === '') {
+          
+          if (!hasGift) {
               giftList.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#999;padding:20px;font-size:13px;">礼物箱空空如也，快让AI送你礼物吧</div>';
           }
       }
@@ -444,6 +464,24 @@ document.addEventListener('DOMContentLoaded', function() {
       if(checked.length === 0) return window.showToast('未选择任何项');
       if(confirm(`确定删除选中的 ${checked.length} 条收藏吗？`)) {
           checked.forEach(idx => settings.favorites.splice(idx, 1));
+          saveSettings(); renderProfilePage(); window.showToast('已删除');
+      }
+  });
+
+  // 🚨 礼物箱多选操作
+  document.getElementById('btn-gift-edit')?.addEventListener('click', function() {
+      isGiftMultiSelect = !isGiftMultiSelect;
+      this.textContent = isGiftMultiSelect ? '取消' : '多选';
+      renderProfilePage();
+  });
+  document.getElementById('gift-select-all')?.addEventListener('change', (e) => {
+      document.querySelectorAll('.gift-cb').forEach(cb => cb.checked = e.target.checked);
+  });
+  document.getElementById('gift-delete-selected')?.addEventListener('click', () => {
+      const checked = Array.from(document.querySelectorAll('.gift-cb:checked')).map(cb => parseInt(cb.value)).sort((a,b) => b-a);
+      if(checked.length === 0) return window.showToast('未选择任何项');
+      if(confirm(`确定删除选中的 ${checked.length} 个礼物吗？`)) {
+          checked.forEach(idx => settings.gifts.splice(idx, 1));
           saveSettings(); renderProfilePage(); window.showToast('已删除');
       }
   });
@@ -728,7 +766,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if(saveSettings()) { applySettings(); switchView('settings'); window.showToast('外观与壁纸已保存！'); tempSettings = {}; }
   });
 
-  // 🚨 修复本地字体上传逻辑
   let tempFontBase64 = '';
   document.getElementById('inp-font-file')?.addEventListener('change', e => {
     fileToBase64Compressed(e.target.files[0], res => {
@@ -852,7 +889,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const room = document.getElementById('chat-room-view');
     room.style.backgroundImage = c.chatBg ? `url('${c.chatBg}')` : 'none';
     
-    // 🎨 动态挂载专属美化 CSS
     let bcss = document.getElementById('chat-bubble-css');
     if(!bcss) { bcss = document.createElement('style'); bcss.id = 'chat-bubble-css'; document.head.appendChild(bcss); }
     bcss.textContent = c.bubbleCss || '';
@@ -861,7 +897,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if(!gcss) { gcss = document.createElement('style'); gcss.id = 'chat-global-css'; document.head.appendChild(gcss); }
     gcss.textContent = c.globalCss || '';
 
-    // 🎨 头像与颜色 UI 逻辑
     const chatBody = document.getElementById('chat-messages');
     if (c.showAvatar === false) chatBody.classList.add('hide-avatar');
     else chatBody.classList.remove('hide-avatar');
@@ -1043,7 +1078,6 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   chatInput.addEventListener('blur', () => { window.scrollTo(0, 0); });
 
-  // 🚨 全局变量记录当前引用的消息
   let currentQuoteText = '';
 
   function renderChatHistory() {
@@ -1059,7 +1093,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const row = document.createElement('div');
     row.dataset.index = index;
     
-    // 🚨 多选复选框
     const cbHtml = `<div class="msg-select-wrap"><input type="checkbox" class="ios-checkbox msg-cb" value="${index}"></div>`;
 
     if (role === 'system') {
@@ -1130,7 +1163,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let val = chatInput.value.trim(); if (!val) return;
     const time = formatTime(new Date());
     
-    // 🚨 引用逻辑处理：拼接 HTML
     let finalContent = val;
     if (currentQuoteText) {
         finalContent = `<div class="quote-block">${currentQuoteText}</div>` + val;
@@ -1197,7 +1229,6 @@ document.addEventListener('DOMContentLoaded', function() {
     try {
       const availableStickers = settings.stickers.map(s => s.group).join('、') || '无';
 
-      // 🚨 强化防 OOC 与活人感 Prompt 升级
       let sysPrompt = `你扮演：${c.realName || c.name}
 性别：${c.gender || '未知'}
 性格：${c.personality || '未设置'}
@@ -1303,6 +1334,11 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
               const sysTime = formatTime(new Date());
               const sysText = action === 'received' ? `"${c.remark || c.name}" 已收款` : `"${c.remark || c.name}" 已退还了转账`;
               history.push({ role: 'system', content: sysText, time: sysTime });
+              
+              if (action === 'refunded') {
+                  updateWallet(parseFloat(pendingTransferAmt), `收到 ${c.remark || c.name} 退还的转账`);
+              }
+              
               renderChatHistory(); saveSettings();
           }
       }
@@ -1339,7 +1375,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
           return `\n||SPLIT||[SYSTEM_MSG] "${c.remark || c.name}" 送给你一份礼物：${giftIcon} ${giftName}\n`;
       });
 
-      // 🚨 修复转账卡片被切分的问题 (移除HTML中的换行)
       aiText = aiText.replace(/\[转账[：:]\s*(\d+(\.\d+)?)\s*[，,]\s*(.*?)\]/g, (match, amt, _, note) => {
           const tHtml = window.createTransferCardHTML(amt, note, 'pending', 'assistant', formatTime(new Date())).replace(/\n/g, '');
           return `\n||SPLIT||${tHtml}\n`;
@@ -1476,7 +1511,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     longPressIndex = parseInt(row.dataset.index);
     
     pressTimer = setTimeout(() => {
-      // 如果在多选模式，不弹出长按菜单
       if (document.getElementById('chat-messages').classList.contains('multi-select-mode')) return;
 
       const menu = document.getElementById('msg-context-menu');
@@ -1499,27 +1533,68 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
   chatMessages.addEventListener('mousedown', startPress); chatMessages.addEventListener('mouseup', cancelPress); chatMessages.addEventListener('mousemove', cancelPress);
   chatMessages.addEventListener('contextmenu', e => { if (e.target.closest('.msg-bubble') || e.target.closest('.msg-system') || e.target.closest('.transfer-card-new')) e.preventDefault(); });
 
-  // 🚨 修复：多选点击选中逻辑 + 语音转文字展开逻辑
+  // 🚨 修复：事件委托处理转账卡片点击、语音点击、多选
   chatMessages.addEventListener('click', (e) => {
+      // 1. 多选模式
       if (chatMessages.classList.contains('multi-select-mode')) {
           const row = e.target.closest('.msg-row');
           if (row && e.target.tagName !== 'INPUT') {
               const cb = row.querySelector('.msg-cb');
               if(cb) cb.checked = !cb.checked;
           }
-      } else {
-          // 🚨 语音气泡点击展示文字
-          const voiceBubble = e.target.closest('.msg-bubble.voice');
-          if (voiceBubble) {
-              const hiddenText = voiceBubble.querySelector('.voice-hidden-text');
-              if (hiddenText) {
-                  if (hiddenText.style.display === 'none') {
-                      hiddenText.style.display = 'block';
-                      hiddenText.classList.add('voice-trans-text');
+          return;
+      } 
+      
+      // 2. 转账卡片双向交互
+      const transferCard = e.target.closest('.transfer-card-new');
+      if (transferCard) {
+          const status = transferCard.dataset.status;
+          const role = transferCard.dataset.role;
+          const amt = transferCard.dataset.amount;
+          const row = transferCard.closest('.msg-row');
+          const idx = parseInt(row.dataset.index);
+
+          // 只有当转账是 pending 状态，且是对方发给我的，我才能点击收款/退还
+          if (status === 'pending' && role === 'assistant') {
+              window.currentTransferIndex = idx;
+              window.currentTransferAmt = parseFloat(amt);
+              document.getElementById('recv-transfer-amt').textContent = amt;
+              document.getElementById('receive-transfer-modal').classList.remove('hidden');
+          }
+          return;
+      }
+
+      // 3. 语音气泡点击展示文字与动画
+      const voiceBubble = e.target.closest('.msg-bubble.voice');
+      if (voiceBubble) {
+          // 播放动画
+          if (!voiceBubble.classList.contains('voice-playing')) {
+              voiceBubble.classList.add('voice-playing');
+              const durationSpan = voiceBubble.querySelector('.voice-duration');
+              let duration = 3;
+              if (durationSpan) duration = parseInt(durationSpan.textContent) || 3;
+              setTimeout(() => {
+                  voiceBubble.classList.remove('voice-playing');
+              }, duration * 1000);
+          }
+
+          // 展开/收起文字
+          const hiddenText = voiceBubble.querySelector('.voice-hidden-text');
+          if (hiddenText) {
+              const wrapper = voiceBubble.closest('.msg-bubble-wrapper');
+              let transDiv = wrapper.querySelector('.voice-trans-text');
+              if (!transDiv) {
+                  transDiv = document.createElement('div');
+                  transDiv.className = 'voice-trans-text';
+                  transDiv.textContent = hiddenText.textContent;
+                  const timestamp = wrapper.querySelector('.msg-timestamp');
+                  if (timestamp) {
+                      wrapper.insertBefore(transDiv, timestamp);
                   } else {
-                      hiddenText.style.display = 'none';
-                      hiddenText.classList.remove('voice-trans-text');
+                      wrapper.appendChild(transDiv);
                   }
+              } else {
+                  transDiv.remove();
               }
           }
       }
@@ -1549,14 +1624,12 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     }
   });
 
-  // 引用相关函数
   function clearQuote() {
       currentQuoteText = '';
       document.getElementById('quote-preview-bar').classList.add('hidden');
   }
   document.getElementById('btn-close-quote').addEventListener('click', clearQuote);
 
-  // 多选模式相关函数
   function enterMultiSelectMode() {
       document.getElementById('chat-messages').classList.add('multi-select-mode');
       document.getElementById('chat-input-bar').classList.add('hidden');
@@ -1580,7 +1653,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       }
   });
 
-  // 转发逻辑
   document.getElementById('btn-multi-forward').addEventListener('click', () => {
       const checked = Array.from(document.querySelectorAll('.msg-cb:checked')).map(cb => parseInt(cb.value));
       if(checked.length === 0) return window.showToast('未选择任何消息');
@@ -2112,8 +2184,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     let opacity = '1';
     if (status === 'received') { statusText = '已收款'; opacity = '0.7'; }
     if (status === 'refunded') { statusText = '已退还'; opacity = '0.7'; }
-    // 🚨 修复：去掉 HTML 里的换行符，防止被 AI 解析器切分成多段
-    return `<div class="transfer-card-new" data-status="${status}" data-amount="${amount}" style="opacity: ${opacity};"><div class="transfer-card-top"><div class="transfer-icon-area"><div class="transfer-icon-circle">¥</div></div><div class="transfer-content"><div class="transfer-amount">¥${amount}</div><div class="transfer-note">${note}</div></div></div><div class="transfer-time">${statusText}</div></div>`;
+    return `<div class="transfer-card-new" data-status="${status}" data-amount="${amount}" data-role="${role}" style="opacity: ${opacity};"><div class="transfer-card-top"><div class="transfer-icon-area"><div class="transfer-icon-circle">¥</div></div><div class="transfer-content"><div class="transfer-amount">¥${amount}</div><div class="transfer-note">${note}</div></div></div><div class="transfer-time">${statusText}</div></div>`;
   };
 
   document.getElementById('btn-send-transfer')?.addEventListener('click', () => {
@@ -2138,18 +2209,77 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     document.getElementById('transfer-modal').classList.add('hidden');
   });
 
+  // 🚨 接收 AI 转账逻辑
+  window.currentTransferIndex = -1;
+  window.currentTransferAmt = 0;
+
+  document.getElementById('btn-confirm-transfer')?.addEventListener('click', () => processUserTransferAction('received'));
+  document.getElementById('btn-refund-transfer')?.addEventListener('click', () => processUserTransferAction('refunded'));
+
+  function processUserTransferAction(action) {
+      const idx = window.currentTransferIndex;
+      if (idx < 0) return;
+      const history = settings.chatHistory[currentChatId];
+      const c = settings.contacts.find(x => x.id === currentChatId);
+      
+      let oldContent = history[idx].content;
+      oldContent = oldContent.replace('data-status="pending"', `data-status="${action}"`);
+      history[idx].content = oldContent;
+
+      if (action === 'received') {
+          updateWallet(window.currentTransferAmt, `收到 ${c.remark || c.name} 的转账`);
+      }
+
+      const sysText = action === 'received' ? `你已收款` : `你退还了转账`;
+      history.push({ role: 'system', content: sysText, time: formatTime(new Date()) });
+      
+      saveSettings();
+      renderChatHistory();
+      document.getElementById('receive-transfer-modal').classList.add('hidden');
+  }
+
+  // 🚨 心声多选逻辑
+  let isIvMultiSelect = false;
+  document.getElementById('iv-multi-select-btn')?.addEventListener('click', function() {
+      isIvMultiSelect = !isIvMultiSelect;
+      this.textContent = isIvMultiSelect ? '取消' : '多选';
+      window.renderInnerVoiceList();
+  });
+
+  document.getElementById('iv-select-all')?.addEventListener('change', (e) => {
+      document.querySelectorAll('.iv-cb').forEach(cb => cb.checked = e.target.checked);
+  });
+
+  document.getElementById('iv-delete-selected')?.addEventListener('click', () => {
+      const checked = Array.from(document.querySelectorAll('.iv-cb:checked')).map(cb => parseInt(cb.value)).sort((a,b) => b-a);
+      if(checked.length === 0) return window.showToast('未选择任何项');
+      if(confirm(`确定删除选中的 ${checked.length} 条心声吗？`)) {
+          const c = settings.contacts.find(x => x.id === currentChatId);
+          checked.forEach(origIdx => c.innerVoices.splice(origIdx, 1));
+          saveSettings(); window.renderInnerVoiceList(); window.showToast('已删除');
+      }
+  });
+
   window.renderInnerVoiceList = function() {
     const list = document.getElementById('iv-list');
     list.innerHTML = '';
+    document.getElementById('iv-multi-action-bar').classList.toggle('hidden', !isIvMultiSelect);
+    
     const c = settings.contacts.find(x => x.id === currentChatId);
     if (!c.innerVoices || c.innerVoices.length === 0) {
       list.innerHTML = '<div style="text-align:center; color:#999; padding: 40px 0;">暂无心声记录，点击右上角生成</div>';
       return;
     }
-    [...c.innerVoices].reverse().forEach((iv, idx) => {
+    
+    [...c.innerVoices].reverse().forEach((iv, reverseIdx) => {
+      const origIdx = c.innerVoices.length - 1 - reverseIdx;
       const card = document.createElement('div');
       card.className = 'iv-card';
+      
+      let cbHtml = isIvMultiSelect ? `<div class="iv-checkbox-wrap"><input type="checkbox" class="ios-checkbox iv-cb" value="${origIdx}"></div>` : '';
+      
       card.innerHTML = `
+        ${cbHtml}
         <div class="iv-card-header">
           <span class="iv-time">${iv.time}</span>
           <span class="iv-mood">${iv.mood || '平静'}</span>
@@ -2163,11 +2293,23 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
           <span class="iv-text">"${iv.thought}"</span>
         </div>
       `;
+      
+      if (isIvMultiSelect) {
+          card.onclick = (e) => {
+              if (e.target.tagName !== 'INPUT') {
+                  const cb = card.querySelector('.iv-cb');
+                  if (cb) cb.checked = !cb.checked;
+              }
+          };
+      }
       list.appendChild(card);
     });
   };
 
   document.getElementById('btn-inner-voice')?.addEventListener('click', () => {
+    isIvMultiSelect = false;
+    const btn = document.getElementById('iv-multi-select-btn');
+    if(btn) btn.textContent = '多选';
     window.renderInnerVoiceList();
     document.getElementById('inner-voice-modal').classList.remove('hidden');
   });
@@ -2188,7 +2330,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     try {
       const recentHistory = history.slice(-10).map(m => `${m.role === 'user' ? '用户' : c.name}: ${m.content.replace(/<[^>]*>?/gm, '')}`).join('\n');
       
-      // 🚨 修复：将客观事实改为当前的动作
       const prompt = `你现在是${c.name}。根据以下最近的聊天记录，推测你此时此刻的内心活动。
 请严格返回 JSON 格式数据，不要有任何其他多余文本：
 {
