@@ -2517,3 +2517,79 @@ ${recentHistory}`;
       const res = await fetch(`${settings.apiUrl}/chat/completions`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${settings.apiKey}` },
         body: JSON
+  document.getElementById('iv-regen')?.addEventListener('click', async () => {
+    if (!settings.apiUrl || !settings.apiKey || !settings.apiModel) return window.showToast("请先配置 API！");
+    const c = settings.contacts.find(x => x.id === currentChatId);
+    const history = settings.chatHistory[currentChatId] || [];
+    if (history.length === 0) return window.showToast("暂无聊天记录可生成心声");
+
+    const btn = document.getElementById('iv-regen');
+    btn.textContent = '感知中...'; btn.style.opacity = '0.7';
+
+    try {
+      const recentHistory = history.slice(-10).map(m => `${m.role === 'user' ? '用户' : c.name}: ${m.content.replace(/<[^>]*>?/gm, '')}`).join('\n');
+      
+      const prompt = `你现在是${c.name}。根据以下最近的聊天记录，推测你此时此刻的内心活动。
+请严格返回 JSON 格式数据，不要有任何其他多余文本：
+{
+  "mood": "当前的情绪状态（如：吃醋、开心、失落，2-4个字）",
+  "fact": "用第三人称描写你此时此刻正在做的一个小动作或微表情（如：不自觉地咬了咬下唇，手指在屏幕上无意识地划动）",
+  "thought": "用第一人称写下你此时最真实的内心独白（如：可恶，他居然真的拒绝了，好气哦！）"
+}
+
+聊天记录：
+${recentHistory}`;
+
+      const res = await fetch(`${settings.apiUrl}/chat/completions`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${settings.apiKey}` },
+        body: JSON.stringify({ 
+            model: settings.apiModel, 
+            messages: [{role: 'user', content: prompt}], 
+            temperature: 0.8,
+            response_format: { type: "json_object" }
+        })
+      });
+      
+      const data = await res.json();
+      const result = JSON.parse(data.choices[0].message.content);
+      
+      if (!c.innerVoices) c.innerVoices = [];
+      c.innerVoices.push({
+        time: formatTime(new Date()) + ' ' + new Date().toLocaleDateString(),
+        mood: result.mood, fact: result.fact, thought: result.thought
+      });
+      
+      saveSettings();
+      window.renderInnerVoiceList();
+      window.showToast('心声已记录');
+    } catch (err) {
+      window.showToast('生成心声失败，请检查API或稍后再试');
+      console.error(err);
+    } finally {
+      btn.textContent = '生成心声'; btn.style.opacity = '1';
+    }
+  });
+
+  // 处理 AI 主动发送解除拉黑申请的弹窗逻辑
+  document.getElementById('btn-reject-ai-unblock')?.addEventListener('click', () => {
+      document.getElementById('ai-unblock-request-modal').classList.add('hidden');
+      window.showToast('已拒绝对方的请求');
+  });
+
+  document.getElementById('btn-accept-ai-unblock')?.addEventListener('click', () => {
+      const c = settings.contacts.find(x => x.id === currentChatId);
+      c.isBlockedByMe = false;
+      saveSettings();
+      document.getElementById('ai-unblock-request-modal').classList.add('hidden');
+      window.updateBlockUI();
+      window.showToast('已原谅对方，解除拉黑');
+      
+      // 自动回复一条系统消息
+      const time = formatTime(new Date());
+      appendMsgToUI('system', `[系统提示] 你已同意 "${c.remark || c.name}" 的解除拉黑申请`, settings.chatHistory[currentChatId].length, time, true);
+      settings.chatHistory[currentChatId].push({ role: 'system', content: `用户已同意你的解除拉黑申请，你们可以正常聊天了。`, time: time });
+      saveSettings(); scrollToBottom();
+  });
+
+  console.log('✅ 系统初始化完成！');
+});
