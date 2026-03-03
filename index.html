@@ -145,9 +145,30 @@
           </div>
         </div>
         
-        <!-- 其他 Tab 占位 -->
+        <!-- 通讯录占位 -->
         <div class="chat-tab-content hidden" id="chat-tab-contacts"><header class="sub-header"><button class="back-btn" data-back="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><polyline points="15 18 9 12 15 6"></polyline></svg></button><h2>通讯录</h2><div style="width:24px"></div></header><div class="sub-body"><div class="placeholder-card glass-card sys-card">通讯录功能占位</div></div></div>
-        <div class="chat-tab-content hidden" id="chat-tab-moments"><header class="sub-header"><button class="back-btn" data-back="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><polyline points="15 18 9 12 15 6"></polyline></svg></button><h2>朋友圈</h2><div style="width:24px"></div></header><div class="sub-body"><div class="placeholder-card glass-card sys-card">朋友圈功能占位</div></div></div>
+        
+        <!-- 朋友圈 (Moments) -->
+        <div class="chat-tab-content hidden" id="chat-tab-moments">
+          <header class="sub-header" style="position: absolute; background: transparent; border: none; box-shadow: none; backdrop-filter: none;">
+            <button class="back-btn" data-back="home" style="color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.5);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+            <div style="flex:1"></div>
+            <button class="icon-button" onclick="showAddMomentModal()" style="color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.5);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg></button>
+          </header>
+          <div class="sub-body" style="padding: 0; background: #fff; min-height: 100%;">
+             <!-- 朋友圈封面 -->
+             <div class="moments-cover" id="moments-cover-disp" onclick="document.getElementById('inp-moments-cover').click()">
+                <div class="moments-user-info">
+                   <span class="moments-user-name" id="moments-user-name">名字</span>
+                   <div class="moments-user-avatar" id="moments-user-avatar"></div>
+                </div>
+             </div>
+             <input type="file" id="inp-moments-cover" accept="image/*" style="display:none;" />
+             
+             <!-- 动态列表 -->
+             <div id="moments-feed" style="padding: 20px 14px 80px; display:flex; flex-direction:column;"></div>
+          </div>
+        </div>
         
         <!-- “我”的个人主页 (Ins奶油风) -->
         <div class="chat-tab-content hidden" id="chat-tab-profile">
@@ -308,11 +329,19 @@
 
       </section>
 
-      <!-- ================= 占位页面 ================= -->
+      <!-- ================= 世界书页面 ================= -->
       <section class="view view-worldbook hidden" data-view="worldbook">
-        <header class="sub-header"><button class="back-btn" data-back="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><polyline points="15 18 9 12 15 6"></polyline></svg></button><h2>世界书</h2><div style="width:24px"></div></header>
-        <div class="sub-body"><div class="placeholder-card glass-card">世界书功能占位</div></div>
+        <header class="sub-header">
+          <button class="back-btn" data-back="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+          <h2>世界书</h2>
+          <button class="icon-button" onclick="showAddWorldbookModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+        </header>
+        <div class="sub-body" id="worldbook-list-container" style="padding-top:10px; display:flex; flex-direction:column; gap:12px;">
+          <!-- JS 渲染 -->
+        </div>
       </section>
+
+      <!-- ================= 论坛页面 ================= -->
       <section class="view view-forum hidden" data-view="forum">
         <header class="sub-header"><button class="back-btn" data-back="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;"><polyline points="15 18 9 12 15 6"></polyline></svg></button><h2>论坛</h2><div style="width:24px"></div></header>
         <div class="sub-body"><div class="placeholder-card glass-card">论坛功能占位</div></div>
@@ -470,7 +499,7 @@
           <div style="position:relative; width:80%; margin:0 auto 12px;">
             <button class="btn-secondary" style="width:100%;">导入数据 (JSON)</button>
             <input type="file" id="btn-import" accept=".json" style="position:absolute; inset:0; opacity:0; cursor:pointer;" />
-          </div>
+                      </div>
           <button class="btn-secondary" id="btn-clear" style="width:80%; color:#ef4444;">清理所有缓存</button>
         </div>
       </section>
@@ -1057,6 +1086,63 @@
         <div style="display: flex; gap: 10px;">
           <button class="btn-secondary" id="btn-reject-ai-unblock" style="flex:1;">拒绝</button>
           <button class="btn-primary" id="btn-accept-ai-unblock" style="flex:1;">同意</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- 🚨 世界书编辑弹窗 -->
+  <div class="modal-backdrop hidden" id="worldbook-modal">
+    <div class="modal">
+      <header class="modal-header">
+        <button class="btn-secondary btn-sm" onclick="document.getElementById('worldbook-modal').classList.add('hidden')">取消</button>
+        <h3 id="wb-modal-title">新建世界书</h3>
+        <button class="btn-primary btn-sm" id="btn-save-worldbook">保存</button>
+      </header>
+      <section class="modal-body">
+        <input type="hidden" id="inp-wb-id" />
+        <div class="form-group"><label>标题 (Title)</label><input type="text" id="inp-wb-title" class="sys-input" placeholder="例如: 魔法学院设定" /></div>
+        <div class="form-group">
+          <label>触发关键词 (英文逗号分隔)</label>
+          <input type="text" id="inp-wb-keys" class="sys-input" placeholder="例如: 魔法,魔杖,校长" />
+          <div style="font-size:11px; color:#999; margin-top:4px;">当聊天中出现这些词时，AI会自动参考此设定。</div>
+        </div>
+        <div class="form-group" style="display:flex; align-items:center; justify-content:space-between;">
+          <label style="margin:0;">全局始终生效</label>
+          <input type="checkbox" class="ios-toggle" id="inp-wb-global" />
+        </div>
+        <div class="form-group">
+          <label>详细设定内容</label>
+          <textarea id="inp-wb-content" class="sys-input" rows="6" placeholder="在这里详细描述世界观、规则、背景故事等..."></textarea>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- 🚨 发布朋友圈弹窗 -->
+  <div class="modal-backdrop hidden" id="add-moment-modal">
+    <div class="modal">
+      <header class="modal-header">
+        <button class="btn-secondary btn-sm" onclick="document.getElementById('add-moment-modal').classList.add('hidden')">取消</button>
+        <h3>发布动态</h3>
+        <button class="btn-primary btn-sm" id="btn-publish-moment">发布</button>
+      </header>
+      <section class="modal-body">
+        <div class="form-group">
+          <label>发布者身份</label>
+          <select id="inp-moment-author" class="sys-input">
+            <option value="me">我 (我的主页身份)</option>
+            <!-- JS 动态填入 AI 角色 -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label>文案内容</label>
+          <textarea id="inp-moment-text" class="sys-input" rows="4" placeholder="分享新鲜事..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>配图 (可选)</label>
+          <input type="file" id="inp-moment-img" accept="image/*" class="sys-file" />
+          <div id="moment-img-preview" style="margin-top:10px; width:100%; height:120px; background-size:cover; background-position:center; border-radius:12px; display:none;"></div>
         </div>
       </section>
     </div>
