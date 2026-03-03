@@ -19,7 +19,7 @@ if (window.marked) {
 document.addEventListener('DOMContentLoaded', function() {
   console.log('✅ DOM已加载，开始初始化...');
 
-  const STORAGE_KEY = 'softphone-settings-v32'; 
+  const STORAGE_KEY = 'softphone-settings-v33'; 
 
   const defaultSettings = {
     wallpaper: '', sticker: '', customCss: '',
@@ -41,7 +41,13 @@ document.addEventListener('DOMContentLoaded', function() {
     personas: [ { id: 'p_default', name: '普通用户', desc: '一个普通的聊天用户，性格随和。', avatar: '' } ],
     favorites: [],
     gifts: [], 
+    
+    // 🚨 新增：世界书与朋友圈数据结构
     worldbooks: [],
+    moments: [],
+    momentsCover: '',
+    momentsName: '我的朋友圈',
+    momentsAvatar: '',
 
     contacts: [
       { 
@@ -60,9 +66,8 @@ document.addEventListener('DOMContentLoaded', function() {
         lastMsg: '你好呀！我是你的 AI 助手~', time: '12:00', pinned: false, isGroup: false,
         innerVoices: [],
         
-        // 🚨 拉黑状态字段
-        isBlockedByMe: false, // 我是否拉黑了TA
-        isBlockedByAI: false  // TA是否拉黑了我
+        isBlockedByMe: false,
+        isBlockedByAI: false
       }
     ],
     chatHistory: {}
@@ -74,7 +79,7 @@ document.addEventListener('DOMContentLoaded', function() {
     try {
       let raw = await localforage.getItem(STORAGE_KEY);
       if (!raw) {
-          raw = localStorage.getItem('softphone-settings-v31') || await localforage.getItem('softphone-settings-v31') || await localforage.getItem('softphone-settings-v30'); 
+          raw = localStorage.getItem('softphone-settings-v32') || await localforage.getItem('softphone-settings-v32') || await localforage.getItem('softphone-settings-v31'); 
           if (raw) await localforage.setItem(STORAGE_KEY, raw);
       }
       if (!raw) return { ...defaultSettings };
@@ -90,7 +95,9 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!parsed.favorites) parsed.favorites = [];
       if (!parsed.gifts) parsed.gifts = defaultSettings.gifts;
       if (!parsed.transactions) parsed.transactions = [];
+      
       if (!parsed.worldbooks) parsed.worldbooks = [];
+      if (!parsed.moments) parsed.moments = [];
 
       parsed.contacts = parsed.contacts.map(c => ({ 
           ...defaultSettings.contacts[0], 
@@ -115,6 +122,8 @@ document.addEventListener('DOMContentLoaded', function() {
       applySettings();
       renderChatList();
       renderProfilePage(); 
+      renderWorldbookList();
+      renderMomentsFeed();
       if (!document.getElementById('chat-room-view').classList.contains('hidden')) renderChatHistory();
   });
 
@@ -683,6 +692,11 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('api-key').value = settings.apiKey;
       document.getElementById('api-temp').value = settings.apiTemp;
       document.getElementById('temp-val').textContent = settings.apiTemp;
+      
+      document.getElementById('api-voice-group').value = settings.apiVoiceGroup || '';
+      document.getElementById('api-voice-key').value = settings.apiVoiceKey || '';
+      document.getElementById('api-voice-id').value = settings.apiVoiceId || '';
+      
       if (settings.apiModel) document.getElementById('api-model').innerHTML = `<option value="${settings.apiModel}">${settings.apiModel}</option>`;
     } else if (viewName === 'settings-appearance') {
       document.getElementById('inp-alpha-status').value = settings.alphaStatus; document.getElementById('val-alpha-status').textContent = settings.alphaStatus + '%';
@@ -747,6 +761,11 @@ document.addEventListener('DOMContentLoaded', function() {
     settings.apiKey = document.getElementById('api-key').value.trim();
     settings.apiModel = document.getElementById('api-model-manual').value.trim() || document.getElementById('api-model').value;
     settings.apiTemp = parseFloat(document.getElementById('api-temp').value);
+    
+    settings.apiVoiceGroup = document.getElementById('api-voice-group').value.trim();
+    settings.apiVoiceKey = document.getElementById('api-voice-key').value.trim();
+    settings.apiVoiceId = document.getElementById('api-voice-id').value.trim();
+
     if(saveSettings()){ switchView('settings'); window.showToast('API 设置已保存！'); }
   });
 
@@ -872,7 +891,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // ================== 🎨 打开聊天房间 (动态美化生效) ==================
+  // ================== 🎨 打开聊天房间 ==================
   window.openChatRoom = function(id) {
     currentChatId = id;
     const c = settings.contacts.find(x => x.id === id);
@@ -922,7 +941,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     renderChatHistory();
-    updateBlockUI(); // 🚨 打开房间时检查拉黑状态
+    updateBlockUI();
     switchView('chat-room');
   }
 
@@ -1168,7 +1187,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // 🚨 拦截发送逻辑（拉黑状态下不可发送）
   chatSendBtn.addEventListener('click', () => {
     const c = settings.contacts.find(x => x.id === currentChatId);
     if (c.isBlockedByMe) return window.showToast('你已拉黑对方，无法发送消息');
@@ -1229,7 +1247,7 @@ document.addEventListener('DOMContentLoaded', function() {
     scrollToBottom();
   }
 
-  // ================== 🚨 AI 生成核心逻辑 ==================
+  // ================== 🚨 AI 生成核心逻辑 (含世界书注入) ==================
   chatGenBtn.addEventListener('click', async () => {
     if (!settings.apiUrl || !settings.apiKey || !settings.apiModel) { window.showToast("请先配置 API！"); return; }
     const c = settings.contacts.find(x => x.id === currentChatId);
@@ -1255,9 +1273,6 @@ document.addEventListener('DOMContentLoaded', function() {
 核心人设：${c.persona || '未设置'}
 用户扮演：${c.myPersona || '普通用户'}。
 
-【世界观与背景设定】
-${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content || '无特殊背景') : '无特殊背景'}
-
 【核心要求】
 请杜绝任何带有强烈侵略性、动物化、过度戏剧化、陈词滥调式浪漫以及强制控制感的描写风格。我需要更自然、新颖或平实的叙述。
 
@@ -1268,33 +1283,52 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
 - 消息日常【1–10句】就行，信息量正常人水平，不用面面俱到。
 - 可以单独回一个「？」或「。」表达疑惑、无语或结束话题。
 
-【记忆与人设一致性】
-- char 不会失忆，会记得之前的聊天和发生过的事。
-- 玩梗与说话风格必须【贴合人设与当时情绪】。
-  - 不会突然从温柔乖乖女变成满嘴恶臭的抽象男。
-  - 不会从冷淡寡言突然变成嘴碎段子手（除非剧情中有合理转变过程）。
-- 语言保持：直白、日常、口语化。不绕圈，不堆书面语。语句可以碎，但情绪要真，实话实说。
-- 可以使用颜文字或者emoji，但是不会每一轮信息都用，要看语境。
-
 【专属隐藏指令】（必须单独占一行，且不要带任何多余符号）：
-- 想要给用户转账：[转账:金额,备注] (例如: [转账:52.0,去买杯奶茶])
+- 想要给用户转账：[转账:金额,备注]
 - 想要发照片：[发送照片:照片画面描述]
 - 想要发语音：[发送语音:时长秒数,语音文字内容]
-- 想要发表情包：[发送表情:表情包的描述] (你目前拥有的表情包类型：${availableStickers}。请严格从这些类型中选择)
+- 想要发表情包：[发送表情:表情包的描述] (拥有的表情包类型：${availableStickers})
 - 想要拍一拍用户：[拍一拍]
 - 发现自己说错话想撤回：[撤回消息]
-- 想要送给用户虚拟礼物：[送礼:礼物名称,emoji图标] (例如: [送礼:奶茶,🥤])
+- 想要送给用户虚拟礼物：[送礼:礼物名称,emoji图标]
 - 【重要】如果用户发了一张图片，并明确要求你“把它换成你的头像”，你必须回复指令：[更换头像]。
-- 【🚨极度生气/拉黑系统】如果你觉得用户极度冒犯了你，或者你非常生气不想理他了，你可以回复指令：[拉黑用户]。
-- 【🚨原谅系统】如果当前用户处于被你拉黑的状态，他可能会发送道歉或申请解除拉黑的留言。如果你觉得他的态度诚恳，决定原谅他，请回复指令：[解除拉黑]。如果你依然生气，可以回复一句话骂他，但不带解除指令。`;
+- 【极度生气/拉黑系统】如果你觉得用户极度冒犯了你，你可以回复指令：[拉黑用户]。
+- 【原谅系统】如果用户处于被你拉黑的状态，他可能会发送道歉留言。如果你决定原谅，请回复指令：[解除拉黑]。`;
 
       if (c.timeAwareness) sysPrompt += `\n当前现实时间：${new Date().toLocaleString()}`;
       if (c.weatherAwareness) sysPrompt += `\n系统提示：当前天气感知已开启，请根据你的设定或语境合理推测天气。`;
       if (c.isBlockedByAI) sysPrompt += `\n【系统提示】注意：你目前已经把用户拉黑了！用户无法给你发普通消息，只能发送申请解除拉黑的留言。`;
       
-      let pendingTransferIndex = -1; let pendingTransferAmt = 0;
       const history = settings.chatHistory[currentChatId] || [];
       
+      // 🚨 动态注入世界书逻辑
+      let activeWorldbooks = [];
+      if (settings.worldbooks) {
+          settings.worldbooks.forEach(wb => { if (wb.isGlobal) activeWorldbooks.push(wb); });
+      }
+      const recentText = history.slice(-5).map(m => m.content).join(' ');
+      if (settings.worldbooks) {
+          settings.worldbooks.forEach(wb => {
+              if (!wb.isGlobal && wb.keys) {
+                  const keys = wb.keys.split(',').map(k => k.trim()).filter(k => k);
+                  for (let key of keys) {
+                      if (recentText.includes(key)) {
+                          if (!activeWorldbooks.find(a => a.id === wb.id)) activeWorldbooks.push(wb);
+                          break;
+                      }
+                  }
+              }
+          });
+      }
+      if (c.worldbook) {
+          const boundWb = settings.worldbooks?.find(w => w.id === c.worldbook);
+          if (boundWb && !activeWorldbooks.find(a => a.id === boundWb.id)) activeWorldbooks.push(boundWb);
+      }
+      if (activeWorldbooks.length > 0) {
+          sysPrompt += "\n\n【当前触发的世界观/设定补充】\n" + activeWorldbooks.map(wb => `[${wb.title}]: ${wb.content}`).join('\n\n');
+      }
+
+      let pendingTransferIndex = -1; let pendingTransferAmt = 0;
       for(let i = history.length - 1; i >= 0; i--) {
           if(history[i].role === 'user' && history[i].content.includes('data-status="pending"')) {
               pendingTransferIndex = i;
@@ -1315,12 +1349,9 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
           const imgMatch = m.content.match(/<img[^>]+src="([^">]+)"/);
           let textContent = m.content.replace(/<[^>]*>?/gm, '').trim();
           
-          // 🚨 翻译引用块给 AI 听
           if (m.role === 'user' && m.content.includes('class="quote-block"')) {
               const quoteMatch = m.content.match(/<div class="quote-block">(.*?)<\/div>/);
-              if (quoteMatch) {
-                  textContent = `[回复了你的消息："${quoteMatch[1]}"] ` + textContent;
-              }
+              if (quoteMatch) { textContent = `[回复了你的消息："${quoteMatch[1]}"] ` + textContent; }
           }
           
           if (imgMatch) {
@@ -1333,10 +1364,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
                   ]
               };
           } else {
-              return { 
-                  role: m.role === 'system' ? 'user' : m.role, 
-                  content: textContent || ' '
-              };
+              return { role: m.role === 'system' ? 'user' : m.role, content: textContent || ' ' };
           }
       }));
 
@@ -1358,11 +1386,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
               const sysTime = formatTime(new Date());
               const sysText = action === 'received' ? `"${c.remark || c.name}" 已收款` : `"${c.remark || c.name}" 已退还了转账`;
               history.push({ role: 'system', content: sysText, time: sysTime });
-              
-              if (action === 'refunded') {
-                  updateWallet(parseFloat(pendingTransferAmt), `收到 ${c.remark || c.name} 退还的转账`);
-              }
-              
+              if (action === 'refunded') updateWallet(parseFloat(pendingTransferAmt), `收到 ${c.remark || c.name} 退还的转账`);
               renderChatHistory(); saveSettings();
           }
       }
@@ -1383,27 +1407,17 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
           }
       }
 
-      if (aiText.includes('[拍一拍]')) {
-          aiText = aiText.replace(/\[拍一拍\]/g, `\n||SPLIT||[SYSTEM_MSG] "${c.remark || c.name}" 拍了拍你\n`);
-      }
-
-      if (aiText.includes('[撤回消息]')) {
-          aiText = aiText.replace(/\[撤回消息\]/g, `\n||SPLIT||[ACTION_RECALL]\n`);
-      }
-
-      // 🚨 AI 拉黑与解除拉黑逻辑
+      if (aiText.includes('[拍一拍]')) aiText = aiText.replace(/\[拍一拍\]/g, `\n||SPLIT||[SYSTEM_MSG] "${c.remark || c.name}" 拍了拍你\n`);
+      if (aiText.includes('[撤回消息]')) aiText = aiText.replace(/\[撤回消息\]/g, `\n||SPLIT||[ACTION_RECALL]\n`);
+      
       if (aiText.includes('[拉黑用户]')) {
           aiText = aiText.replace(/\[拉黑用户\]/g, '');
-          c.isBlockedByAI = true;
-          saveSettings();
-          updateBlockUI();
+          c.isBlockedByAI = true; saveSettings(); updateBlockUI();
           aiText += `\n||SPLIT||[SYSTEM_MSG] 消息已发出，但被对方拒收了。\n`;
       }
       if (aiText.includes('[解除拉黑]')) {
           aiText = aiText.replace(/\[解除拉黑\]/g, '');
-          c.isBlockedByAI = false;
-          saveSettings();
-          updateBlockUI();
+          c.isBlockedByAI = false; saveSettings(); updateBlockUI();
           aiText += `\n||SPLIT||[SYSTEM_MSG] "${c.remark || c.name}" 已将你移出黑名单。\n`;
       }
 
@@ -1432,9 +1446,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
 
       aiText = aiText.replace(/\[发送表情[：:]\s*(.*?)\]/g, (match, desc) => {
           let targetSticker = settings.stickers.find(s => desc.includes(s.group) || s.group.includes(desc));
-          if (!targetSticker && settings.stickers.length > 0) {
-              targetSticker = settings.stickers[Math.floor(Math.random() * settings.stickers.length)];
-          }
+          if (!targetSticker && settings.stickers.length > 0) targetSticker = settings.stickers[Math.floor(Math.random() * settings.stickers.length)];
           if (targetSticker) return `\n||SPLIT||<img src="${targetSticker.url}" class="image-bubble" alt="表情包">\n`;
           else return `\n||SPLIT||[表情] ${desc}\n`;
       });
@@ -1446,7 +1458,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       const processQueue = async () => {
           for (let i = 0; i < slices.length; i++) {
               let sliceText = slices[i];
-              
               let typeTime = Math.min(2500, 600 + sliceText.length * 80);
               if (sliceText.includes('<svg') || sliceText.includes('[SYSTEM_MSG]')) typeTime = 800;
               
@@ -1459,9 +1470,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
 
               if (sliceText === '[ACTION_RECALL]') {
                   let lastAiIdx = -1;
-                  for(let j = history.length - 1; j >= 0; j--) {
-                      if(history[j].role === 'assistant') { lastAiIdx = j; break; }
-                  }
+                  for(let j = history.length - 1; j >= 0; j--) { if(history[j].role === 'assistant') { lastAiIdx = j; break; } }
                   if(lastAiIdx !== -1) {
                       history[lastAiIdx] = { role: 'system', content: `"${c.remark || c.name}" 撤回了一条消息`, time: time };
                       renderChatHistory(); saveSettings();
@@ -1484,10 +1493,8 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
               }
               
               saveSettings(); scrollToBottom();
-
               if (i < slices.length - 1) { showTypingIndicator(c); }
           }
-          
           nameEl.textContent = originalName;
           nameEl.classList.remove('typing');
       };
@@ -1509,27 +1516,19 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     if (!history || history.length === 0) return;
     
     let lastUserIdx = -1;
-    for(let i = history.length - 1; i >= 0; i--) {
-        if(history[i].role === 'user') { lastUserIdx = i; break; }
-    }
+    for(let i = history.length - 1; i >= 0; i--) { if(history[i].role === 'user') { lastUserIdx = i; break; } }
     
     if (lastUserIdx !== -1 && lastUserIdx < history.length - 1) {
         if(!confirm('确定要重新生成这一轮的消息吗？原有的 AI 回复将被删除。')) return;
         history.splice(lastUserIdx + 1);
-        saveSettings(); 
-        renderChatHistory();
-        chatGenBtn.click(); 
+        saveSettings(); renderChatHistory(); chatGenBtn.click(); 
     } else {
         window.showToast('没有可重新生成的对话');
     }
   });
 
-  // 🚨 修复：双击事件分流（拍一拍 vs 编辑消息）
-  let touchTime = 0;
   chatMessages.addEventListener('dblclick', (e) => {
     const c = settings.contacts.find(x => x.id === currentChatId);
-    
-    // 1. 双击头像 -> 拍一拍
     const avatar = e.target.closest('.avatar');
     if (avatar) {
         if (c.enablePoke === false) return; 
@@ -1544,45 +1543,31 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
         return;
     }
 
-    // 2. 🚨 双击气泡 -> 编辑消息
     const bubble = e.target.closest('.msg-bubble');
     if (bubble && !bubble.classList.contains('voice') && !bubble.classList.contains('image-bubble') && !bubble.classList.contains('fake-photo-bubble')) {
         const row = bubble.closest('.msg-row');
         const idx = parseInt(row.dataset.index);
         const history = settings.chatHistory[currentChatId];
-        const msgObj = history[idx];
-        
-        let rawText = msgObj.content;
-        // 如果包含引用块，剥离出来
-        if (rawText.includes('class="quote-block"')) {
-            rawText = rawText.replace(/<div class="quote-block">.*?<\/div>/, '');
-        }
-        
+        let rawText = history[idx].content;
+        if (rawText.includes('class="quote-block"')) rawText = rawText.replace(/<div class="quote-block">.*?<\/div>/, '');
         document.getElementById('inp-edit-msg').value = rawText;
         window.currentEditIndex = idx;
         document.getElementById('edit-msg-modal').classList.remove('hidden');
     }
   });
 
-  // 保存编辑后的消息
   document.getElementById('btn-save-edit-msg')?.addEventListener('click', () => {
       const idx = window.currentEditIndex;
       if (idx < 0) return;
       const newText = document.getElementById('inp-edit-msg').value.trim();
       const history = settings.chatHistory[currentChatId];
-      
       let finalContent = newText;
-      // 恢复引用块（如果有）
       if (history[idx].content.includes('class="quote-block"')) {
           const quoteMatch = history[idx].content.match(/(<div class="quote-block">.*?<\/div>)/);
-          if (quoteMatch) {
-              finalContent = quoteMatch[1] + newText;
-          }
+          if (quoteMatch) finalContent = quoteMatch[1] + newText;
       }
-      
       history[idx].content = finalContent;
-      saveSettings();
-      renderChatHistory();
+      saveSettings(); renderChatHistory();
       document.getElementById('edit-msg-modal').classList.add('hidden');
       window.showToast('消息已修改');
   });
@@ -1596,17 +1581,14 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     
     pressTimer = setTimeout(() => {
       if (document.getElementById('chat-messages').classList.contains('multi-select-mode')) return;
-
       const menu = document.getElementById('msg-context-menu');
       menu.classList.remove('hidden');
       let touch = e.touches ? e.touches[0] : e;
-      
       const menuWidth = 140; const menuHeight = 260;
       let left = touch.clientX; let top = touch.clientY;
       if (left + menuWidth > window.innerWidth) left = window.innerWidth - menuWidth - 10;
       if (top + menuHeight > window.innerHeight) top = window.innerHeight - menuHeight - 10;
       if (top < 20) top = 20;
-      
       menu.style.left = left + 'px'; menu.style.top = top + 'px';
       if (navigator.vibrate) navigator.vibrate(50);
     }, 500);
@@ -1616,6 +1598,42 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
   chatMessages.addEventListener('touchstart', startPress); chatMessages.addEventListener('touchend', cancelPress); chatMessages.addEventListener('touchmove', cancelPress);
   chatMessages.addEventListener('mousedown', startPress); chatMessages.addEventListener('mouseup', cancelPress); chatMessages.addEventListener('mousemove', cancelPress);
   chatMessages.addEventListener('contextmenu', e => { if (e.target.closest('.msg-bubble') || e.target.closest('.msg-system') || e.target.closest('.transfer-card-new')) e.preventDefault(); });
+
+  // 🚨 MiniMax 真实语音调用逻辑
+  async function playMiniMaxVoice(text, bubbleEl) {
+      if (!settings.apiVoiceKey || !settings.apiVoiceGroup) {
+          window.showToast("请先在设置中配置 MiniMax 语音 API");
+          return;
+      }
+      bubbleEl.classList.add('voice-playing');
+      try {
+          const response = await fetch(`https://api.minimax.chat/v1/t2a_v2?GroupId=${settings.apiVoiceGroup}`, {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${settings.apiVoiceKey}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  model: "speech-01-turbo",
+                  text: text,
+                  stream: false,
+                  voice_setting: { voice_id: settings.apiVoiceId || "male-qn-qingse", speed: 1, vol: 1, pitch: 0 },
+                  pronunciation_dict: { tone: [""] },
+                  audio_setting: { sample_rate: 32000, bitrate: 128000, format: "mp3", channel: 1 }
+              })
+          });
+          if (!response.ok) throw new Error("语音生成请求失败");
+          const data = await response.json();
+          if (data.base_resp && data.base_resp.status_code === 0) {
+              const audioSrc = 'data:audio/mp3;base64,' + data.data.audio;
+              const audio = new Audio(audioSrc);
+              audio.play();
+              audio.onended = () => bubbleEl.classList.remove('voice-playing');
+          } else {
+              throw new Error(data.base_resp.status_msg || "未知错误");
+          }
+      } catch (err) {
+          window.showToast("语音播放失败: " + err.message);
+          bubbleEl.classList.remove('voice-playing');
+      }
+  }
 
   chatMessages.addEventListener('click', (e) => {
       if (chatMessages.classList.contains('multi-select-mode')) {
@@ -1634,10 +1652,8 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
           const amt = transferCard.dataset.amount;
           const row = transferCard.closest('.msg-row');
           const idx = parseInt(row.dataset.index);
-
           if (status === 'pending' && role === 'assistant') {
-              window.currentTransferIndex = idx;
-              window.currentTransferAmt = parseFloat(amt);
+              window.currentTransferIndex = idx; window.currentTransferAmt = parseFloat(amt);
               document.getElementById('recv-transfer-amt').textContent = amt;
               document.getElementById('receive-transfer-modal').classList.remove('hidden');
           }
@@ -1646,30 +1662,29 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
 
       const voiceBubble = e.target.closest('.msg-bubble.voice');
       if (voiceBubble) {
-          if (!voiceBubble.classList.contains('voice-playing')) {
-              voiceBubble.classList.add('voice-playing');
-              const durationSpan = voiceBubble.querySelector('.voice-duration');
-              let duration = 3;
-              if (durationSpan) duration = parseInt(durationSpan.textContent) || 3;
-              setTimeout(() => {
-                  voiceBubble.classList.remove('voice-playing');
-              }, duration * 1000);
-          }
-
           const hiddenText = voiceBubble.querySelector('.voice-hidden-text');
           if (hiddenText) {
+              const text = hiddenText.textContent;
+              if (settings.apiVoiceKey && settings.apiVoiceGroup) {
+                  playMiniMaxVoice(text, voiceBubble);
+              } else {
+                  if (!voiceBubble.classList.contains('voice-playing')) {
+                      voiceBubble.classList.add('voice-playing');
+                      const durationSpan = voiceBubble.querySelector('.voice-duration');
+                      let duration = 3;
+                      if (durationSpan) duration = parseInt(durationSpan.textContent) || 3;
+                      setTimeout(() => voiceBubble.classList.remove('voice-playing'), duration * 1000);
+                  }
+              }
               const wrapper = voiceBubble.closest('.msg-bubble-wrapper');
               let transDiv = wrapper.querySelector('.voice-trans-text');
               if (!transDiv) {
                   transDiv = document.createElement('div');
                   transDiv.className = 'voice-trans-text';
-                  transDiv.textContent = hiddenText.textContent;
+                  transDiv.textContent = text;
                   const timestamp = wrapper.querySelector('.msg-timestamp');
-                  if (timestamp) {
-                      wrapper.insertBefore(transDiv, timestamp);
-                  } else {
-                      wrapper.appendChild(transDiv);
-                  }
+                  if (timestamp) wrapper.insertBefore(transDiv, timestamp);
+                  else wrapper.appendChild(transDiv);
               } else {
                   transDiv.remove();
               }
@@ -1714,7 +1729,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
   }
   function exitMultiSelectMode() {
       document.getElementById('chat-messages').classList.remove('multi-select-mode');
-      updateBlockUI(); // 恢复原本的底部栏状态
+      updateBlockUI(); 
       document.getElementById('chat-multi-action-bar').classList.add('hidden');
       document.querySelectorAll('.msg-cb').forEach(cb => cb.checked = false);
   }
@@ -1789,24 +1804,17 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       const isMine = msgObj.role === 'user';
       const c = settings.contacts.find(x => x.id === currentChatId);
       const text = isMine ? '你撤回了一条消息' : `"${c.remark || c.name}" 撤回了一条消息`;
-      
-      msgObj.role = 'system';
-      msgObj.content = text;
+      msgObj.role = 'system'; msgObj.content = text;
       saveSettings(); renderChatHistory(); window.showToast('已撤回');
     } else if (action === 'favorite') {
       const c = settings.contacts.find(x => x.id === currentChatId);
       const fromWho = msgObj.role === 'user' ? '我' : (c.remark || c.name);
-      settings.favorites.push({
-          content: msgObj.content,
-          from: fromWho,
-          time: formatTime(new Date())
-      });
+      settings.favorites.push({ content: msgObj.content, from: fromWho, time: formatTime(new Date()) });
       saveSettings(); renderProfilePage(); window.showToast('已加入收藏');
     } else if (action === 'reply') {
       let rawText = msgObj.content;
       if (rawText.includes('<img')) rawText = '[图片]';
       else rawText = rawText.replace(/<[^>]*>?/gm, ''); 
-      
       currentQuoteText = rawText;
       document.getElementById('quote-preview-text').textContent = rawText;
       document.getElementById('quote-preview-bar').classList.remove('hidden');
@@ -1817,8 +1825,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
           const row = document.querySelector(`.msg-row[data-index="${longPressIndex}"]`);
           if(row) row.querySelector('.msg-cb').checked = true;
       }, 100);
-    } else {
-      window.showToast('该功能开发中...');
     }
   };
 
@@ -1976,21 +1982,17 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       const btnToggleMy = document.getElementById('btn-toggle-my-block');
       
       if (c.isBlockedByMe) {
-          myStatusEl.textContent = '已拉黑对方';
-          myStatusEl.style.color = '#ef4444';
+          myStatusEl.textContent = '已拉黑对方'; myStatusEl.style.color = '#ef4444';
           btnToggleMy.textContent = '解除拉黑';
       } else {
-          myStatusEl.textContent = '正常聊天中';
-          myStatusEl.style.color = '#10b981';
+          myStatusEl.textContent = '正常聊天中'; myStatusEl.style.color = '#10b981';
           btnToggleMy.textContent = '拉黑此角色';
       }
 
       if (c.isBlockedByAI) {
-          aiStatusEl.textContent = '你已被对方拉黑';
-          aiStatusEl.style.color = '#ef4444';
+          aiStatusEl.textContent = '你已被对方拉黑'; aiStatusEl.style.color = '#ef4444';
       } else {
-          aiStatusEl.textContent = '正常聊天中';
-          aiStatusEl.style.color = '#10b981';
+          aiStatusEl.textContent = '正常聊天中'; aiStatusEl.style.color = '#10b981';
       }
       
       document.getElementById('block-manager-modal').classList.remove('hidden');
@@ -1999,9 +2001,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
   window.toggleMyBlock = function() {
       const c = settings.contacts.find(x => x.id === currentChatId);
       c.isBlockedByMe = !c.isBlockedByMe;
-      saveSettings();
-      showBlockManagerModal();
-      updateBlockUI();
+      saveSettings(); showBlockManagerModal(); updateBlockUI();
       window.showToast(c.isBlockedByMe ? '已将对方加入黑名单' : '已解除拉黑');
   };
 
@@ -2010,49 +2010,39 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       if (!c.isBlockedByAI) return window.showToast('对方并未拉黑你');
       if (confirm('是否强制解除对方对你的拉黑状态？（这属于作弊行为哦）')) {
           c.isBlockedByAI = false;
-          saveSettings();
-          showBlockManagerModal();
-          updateBlockUI();
+          saveSettings(); showBlockManagerModal(); updateBlockUI();
           window.showToast('已强制解除');
       }
   };
 
-  // 🚨 动态更新底部输入框的拉黑 UI
   window.updateBlockUI = function() {
       const c = settings.contacts.find(x => x.id === currentChatId);
       const inputBar = document.getElementById('chat-input-bar');
       const normalRow = document.getElementById('chat-normal-input-row');
       const toolsRow = document.getElementById('chat-normal-tools-row');
       
-      // 移除之前可能添加的拉黑提示栏
       const oldBlockBar = document.getElementById('block-status-bar');
       if (oldBlockBar) oldBlockBar.remove();
 
       if (c.isBlockedByMe) {
-          normalRow.classList.add('hidden');
-          toolsRow.classList.add('hidden');
-          const bar = document.createElement('div');
-          bar.id = 'block-status-bar';
+          normalRow.classList.add('hidden'); toolsRow.classList.add('hidden');
+          const bar = document.createElement('div'); bar.id = 'block-status-bar';
           bar.style.cssText = 'text-align:center; padding:12px; color:#ef4444; font-size:14px; font-weight:bold; cursor:pointer;';
           bar.textContent = '你已将对方拉黑，无法发送消息 (点击解除)';
           bar.onclick = () => { c.isBlockedByMe = false; saveSettings(); updateBlockUI(); window.showToast('已解除拉黑'); };
           inputBar.appendChild(bar);
       } else if (c.isBlockedByAI) {
-          normalRow.classList.add('hidden');
-          toolsRow.classList.add('hidden');
-          const bar = document.createElement('div');
-          bar.id = 'block-status-bar';
+          normalRow.classList.add('hidden'); toolsRow.classList.add('hidden');
+          const bar = document.createElement('div'); bar.id = 'block-status-bar';
           bar.style.cssText = 'text-align:center; padding:12px; color:#ef4444; font-size:14px; font-weight:bold; cursor:pointer; background:rgba(239,68,68,0.1); border-radius:12px;';
           bar.textContent = '你已被对方拉黑，点击发送解除申请';
           bar.onclick = () => { document.getElementById('unblock-request-modal').classList.remove('hidden'); };
           inputBar.appendChild(bar);
       } else {
-          normalRow.classList.remove('hidden');
-          toolsRow.classList.remove('hidden');
+          normalRow.classList.remove('hidden'); toolsRow.classList.remove('hidden');
       }
   };
 
-  // 🚨 发送解除拉黑申请
   document.getElementById('btn-send-unblock-req')?.addEventListener('click', async () => {
       const reqMsg = document.getElementById('inp-unblock-req').value.trim() || '对不起，我错了，原谅我好不好？';
       document.getElementById('unblock-request-modal').classList.add('hidden');
@@ -2061,488 +2051,4 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       appendMsgToUI('system', `[系统提示] 你发送了解除拉黑申请：\n"${reqMsg}"`, settings.chatHistory[currentChatId].length, time, true);
       settings.chatHistory[currentChatId].push({ role: 'system', content: `用户发送了解除拉黑申请："${reqMsg}"`, time: time });
       saveSettings(); scrollToBottom();
-
-      // 触发 AI 思考是否原谅
-      chatGenBtn.click();
-  });
-
-  window.clearSpecificChat = function(includeMemory) {
-      const msg = includeMemory ? '确定清空聊天记录和所有记忆/心声吗？此操作不可逆！' : '确定仅清空聊天记录吗？';
-      if(confirm(msg)) {
-          settings.chatHistory[currentChatId] = [];
-          if(includeMemory) {
-              const c = settings.contacts.find(x => x.id === currentChatId);
-              c.innerVoices = [];
-          }
-          saveSettings(); renderChatHistory();
-          document.getElementById('chat-settings-modal').classList.add('hidden');
-          window.showToast('已清空');
-      }
-  };
-
-  window.deleteCurrentContact = function() {
-      if(confirm('确定永久删除该联系人及所有数据吗？')) {
-          settings.contacts = settings.contacts.filter(x => x.id !== currentChatId);
-          delete settings.chatHistory[currentChatId];
-          saveSettings(); 
-          document.getElementById('chat-settings-modal').classList.add('hidden');
-          document.querySelector('[data-back="chat"]').click(); 
-          renderChatList();
-          window.showToast('联系人已删除');
-      }
-  };
-
-  document.getElementById('btn-export-chat-json').addEventListener('click', () => {
-      const c = settings.contacts.find(x => x.id === currentChatId);
-      const history = settings.chatHistory[currentChatId] || [];
-      const exportData = { contact: c, history: history };
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
-      const a = document.createElement('a'); a.href = dataStr; a.download = `${c.name}_chat_backup.json`;
-      document.body.appendChild(a); a.click(); a.remove(); window.showToast('导出成功！');
-  });
-
-  document.getElementById('inp-import-chat').addEventListener('change', (e) => {
-      const file = e.target.files[0]; if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-          try {
-              const data = JSON.parse(event.target.result);
-              if(data.history) {
-                  settings.chatHistory[currentChatId] = data.history;
-                  if(data.contact) {
-                      const idx = settings.contacts.findIndex(x => x.id === currentChatId);
-                      settings.contacts[idx] = { ...settings.contacts[idx], ...data.contact, id: currentChatId }; 
-                  }
-                  saveSettings(); renderChatHistory();
-                  document.getElementById('chat-settings-modal').classList.add('hidden');
-                  window.showToast('记录导入成功！');
-              } else {
-                  window.showToast('JSON 格式不包含 history 字段');
-              }
-          } catch(err) { window.showToast('JSON 格式错误！'); }
-      };
-      reader.readAsText(file);
-  });
-
-  // ================== 🚨 修复补充：缺失的弹窗和面板切换逻辑 ==================
-
-  window.showMusicModal = function() {
-    document.getElementById('inp-music-title').value = settings.music.title || '';
-    document.getElementById('inp-music-artist').value = settings.music.artist || '';
-    document.getElementById('inp-music-url').value = settings.music.audio && settings.music.audio.startsWith('http') ? settings.music.audio : '';
-    document.getElementById('music-modal').classList.remove('hidden');
-  };
-
-  let tempMusicCover = '';
-  let tempMusicAudio = '';
-  document.getElementById('inp-music-cover')?.addEventListener('change', e => {
-    fileToBase64Compressed(e.target.files[0], res => tempMusicCover = res);
-  });
-  document.getElementById('inp-music-file')?.addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => tempMusicAudio = event.target.result;
-      reader.readAsDataURL(file);
-    }
-  });
-
-  document.getElementById('btn-save-music')?.addEventListener('click', () => {
-    settings.music.title = document.getElementById('inp-music-title').value || '未知歌曲';
-    settings.music.artist = document.getElementById('inp-music-artist').value || '未知歌手';
-    const url = document.getElementById('inp-music-url').value.trim();
-    
-    if (tempMusicCover) settings.music.cover = tempMusicCover;
-    if (url) {
-        settings.music.audio = url;
-    } else if (tempMusicAudio) {
-        settings.music.audio = tempMusicAudio;
-    }
-    
-    saveSettings();
-    applySettings(); 
-    document.getElementById('music-modal').classList.add('hidden');
-    window.showToast('音乐设置已保存');
-  });
-
-  window.toggleMusicPlay = function() {
-    const audio = document.getElementById('sys-audio-player');
-    const btn = document.getElementById('btn-play-pause');
-    const disc = document.getElementById('music-cover-disp');
-    if (!audio.src || audio.src === window.location.href) {
-      window.showToast('请先长按或点击设置音乐文件');
-      return;
-    }
-    if (audio.paused) {
-      audio.play();
-      btn.classList.add('playing');
-      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
-      disc.classList.add('playing');
-    } else {
-      audio.pause();
-      btn.classList.remove('playing');
-      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
-      disc.classList.remove('playing');
-    }
-  };
-
-  window.showAnniModal = function() {
-    document.getElementById('inp-anni-title').value = settings.widgetAnni.title || '';
-    document.getElementById('inp-anni-date').value = settings.widgetAnni.date || '';
-    document.getElementById('anni-modal').classList.remove('hidden');
-  };
-
-  document.getElementById('btn-save-anni')?.addEventListener('click', () => {
-    settings.widgetAnni.title = document.getElementById('inp-anni-title').value || '纪念日';
-    settings.widgetAnni.date = document.getElementById('inp-anni-date').value;
-    saveSettings();
-    applySettings();
-    document.getElementById('anni-modal').classList.add('hidden');
-    window.showToast('纪念日已保存');
-  });
-
-  window.toggleStickerPanel = function() {
-    const panel = document.getElementById('chat-sticker-panel');
-    const extra = document.getElementById('chat-extra-menu');
-    if (!panel.classList.contains('hidden')) {
-      panel.classList.add('hidden');
-    } else {
-      extra.classList.add('hidden');
-      renderStickerPanel(); 
-      panel.classList.remove('hidden');
-    }
-  };
-
-  window.toggleExtraMenu = function() {
-    const panel = document.getElementById('chat-sticker-panel');
-    const extra = document.getElementById('chat-extra-menu');
-    if (!extra.classList.contains('hidden')) {
-      extra.classList.add('hidden');
-    } else {
-      panel.classList.add('hidden');
-      extra.classList.remove('hidden');
-    }
-  };
-
-  window.showStickerManagerModal = function() {
-    document.getElementById('chat-sticker-panel').classList.add('hidden');
-    renderStickerManagerList();
-    document.getElementById('sticker-manager-modal').classList.remove('hidden');
-  };
-
-  document.getElementById('btn-add-sticker')?.addEventListener('click', () => {
-    const url = document.getElementById('inp-sticker-url').value.trim();
-    const group = document.getElementById('inp-sticker-group').value.trim() || '默认';
-    if (!url) return window.showToast('请输入图片URL');
-    settings.stickers.push({ group, url });
-    saveSettings();
-    document.getElementById('inp-sticker-url').value = '';
-    renderStickerManagerList();
-    window.showToast('表情包已添加');
-  });
-
-  function renderStickerManagerList() {
-    const list = document.getElementById('sticker-manager-list');
-    list.innerHTML = '';
-    settings.stickers.forEach((s, idx) => {
-      const img = document.createElement('img');
-      img.src = s.url;
-      img.style.cssText = 'width: 50px; height: 50px; object-fit: contain; background: #eee; border-radius: 8px; cursor: pointer;';
-      img.title = `点击删除 [${s.group}]`;
-      img.onclick = () => {
-        if(confirm(`确定删除该表情包吗？`)) {
-          settings.stickers.splice(idx, 1);
-          saveSettings();
-          renderStickerManagerList();
-        }
-      };
-      list.appendChild(img);
-    });
-  }
-
-  function renderStickerPanel() {
-    const tabs = document.getElementById('sticker-tabs');
-    const list = document.getElementById('sticker-list');
-    tabs.innerHTML = ''; list.innerHTML = '';
-    
-    const groups = [...new Set(settings.stickers.map(s => s.group))];
-    if (groups.length === 0) {
-      list.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#999;font-size:12px;padding:20px;">暂无表情包，请点击下方管理添加</div>';
-      return;
-    }
-    
-    let activeGroup = groups[0];
-    
-    const renderList = (groupName) => {
-      list.innerHTML = '';
-      settings.stickers.filter(s => s.group === groupName).forEach(s => {
-        const div = document.createElement('div');
-        div.className = 'sticker-item';
-        div.style.backgroundImage = `url('${s.url}')`;
-        div.onclick = () => {
-          const time = formatTime(new Date());
-          const html = `<img src="${s.url}" class="image-bubble" alt="表情包">`;
-          const c = settings.contacts.find(x => x.id === currentChatId);
-          appendMsgToUI('user', html, settings.chatHistory[currentChatId].length, time, c.timestamps !== false);
-          settings.chatHistory[currentChatId].push({ role: 'user', content: html, time: time });
-          updateContactLastMsg(currentChatId, '[表情包]', time);
-          saveSettings();
-          scrollToBottom();
-          document.getElementById('chat-sticker-panel').classList.add('hidden');
-        };
-        list.appendChild(div);
-      });
-    };
-
-    groups.forEach(g => {
-      const btn = document.createElement('button');
-      btn.className = `sticker-tab ${g === activeGroup ? 'active' : ''}`;
-      btn.textContent = g;
-      btn.onclick = () => {
-        document.querySelectorAll('.sticker-tab').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        renderList(g);
-      };
-      tabs.appendChild(btn);
-    });
-    renderList(activeGroup);
-  }
-
-  window.showFakeVoiceModal = function() {
-    document.getElementById('chat-extra-menu').classList.add('hidden');
-    document.getElementById('inp-fake-voice').value = '';
-    document.getElementById('fake-voice-modal').classList.remove('hidden');
-  };
-
-  document.getElementById('btn-send-fake-voice')?.addEventListener('click', () => {
-    const text = document.getElementById('inp-fake-voice').value.trim() || '语音消息';
-    const duration = document.getElementById('inp-voice-duration').value || 3;
-    const vHtml = `<svg viewBox="0 0 24 24" class="voice-icon" fill="currentColor"><path d="M12 3v18m-4-14v10m8-10v10m-12-6v2m16-2v2"/></svg><span class="voice-duration">${duration}"</span><span class="voice-hidden-text" style="display:none;">${text}</span>`;
-    const time = formatTime(new Date());
-    const c = settings.contacts.find(x => x.id === currentChatId);
-    appendMsgToUI('user', vHtml, settings.chatHistory[currentChatId].length, time, c.timestamps !== false);
-    
-    settings.chatHistory[currentChatId].push({ role: 'user', content: vHtml, time: time });
-    updateContactLastMsg(currentChatId, '[语音]', time);
-    saveSettings(); scrollToBottom();
-    document.getElementById('fake-voice-modal').classList.add('hidden');
-  });
-
-  window.showFakePhotoModal = function() {
-    document.getElementById('chat-extra-menu').classList.add('hidden');
-    document.getElementById('inp-fake-photo').value = '';
-    document.getElementById('fake-photo-modal').classList.remove('hidden');
-  };
-
-  document.getElementById('btn-send-fake-photo')?.addEventListener('click', () => {
-    const desc = document.getElementById('inp-fake-photo').value.trim() || '一张照片';
-    const pHtml = `<svg class="fake-photo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg><span>[照片] ${desc}</span>`;
-    const time = formatTime(new Date());
-    const c = settings.contacts.find(x => x.id === currentChatId);
-    appendMsgToUI('user', pHtml, settings.chatHistory[currentChatId].length, time, c.timestamps !== false);
-    settings.chatHistory[currentChatId].push({ role: 'user', content: pHtml, time: time });
-    
-    updateContactLastMsg(currentChatId, '[图片]', time);
-    saveSettings(); scrollToBottom();
-    document.getElementById('fake-photo-modal').classList.add('hidden');
-  });
-
-  window.showTransferModal = function() {
-    document.getElementById('chat-extra-menu').classList.add('hidden');
-    document.getElementById('inp-transfer-amount').value = '';
-    document.getElementById('inp-transfer-note').value = '转账给你';
-    document.getElementById('transfer-modal').classList.remove('hidden');
-  };
-
-  window.createTransferCardHTML = function(amount, note, status = 'pending', role = 'user', time = '') {
-    let statusText = '请收款';
-    let opacity = '1';
-    if (status === 'received') { statusText = '已收款'; opacity = '0.7'; }
-    if (status === 'refunded') { statusText = '已退还'; opacity = '0.7'; }
-    return `<div class="transfer-card-new" data-status="${status}" data-amount="${amount}" data-role="${role}" style="opacity: ${opacity};"><div class="transfer-card-top"><div class="transfer-icon-area"><div class="transfer-icon-circle">¥</div></div><div class="transfer-content"><div class="transfer-amount">¥${amount}</div><div class="transfer-note">${note}</div></div></div><div class="transfer-time">${statusText}</div></div>`;
-  };
-
-  document.getElementById('btn-send-transfer')?.addEventListener('click', () => {
-    const amt = document.getElementById('inp-transfer-amount').value;
-    const note = document.getElementById('inp-transfer-note').value || '转账给你';
-    if (!amt || isNaN(amt) || parseFloat(amt) <= 0) return window.showToast('请输入有效金额');
-    
-    const currentWallet = parseFloat(settings.wallet.val.replace(/[^\d.-]/g, '')) || 0;
-    if (currentWallet < parseFloat(amt)) return window.showToast('钱包余额不足！请先去"我"的页面充值');
-
-    updateWallet(-parseFloat(amt), `转账给 ${document.getElementById('chat-target-name').textContent}`);
-
-    const tHtml = window.createTransferCardHTML(amt, note, 'pending', 'user', formatTime(new Date()));
-    const time = formatTime(new Date());
-    const c = settings.contacts.find(x => x.id === currentChatId);
-    
-    appendMsgToUI('user', tHtml, settings.chatHistory[currentChatId].length, time, c.timestamps !== false);
-    settings.chatHistory[currentChatId].push({ role: 'user', content: tHtml, time: time });
-    
-    updateContactLastMsg(currentChatId, '[转账]', time);
-    saveSettings(); scrollToBottom();
-    document.getElementById('transfer-modal').classList.add('hidden');
-  });
-
-  window.currentTransferIndex = -1;
-  window.currentTransferAmt = 0;
-
-  document.getElementById('btn-confirm-transfer')?.addEventListener('click', () => processUserTransferAction('received'));
-  document.getElementById('btn-refund-transfer')?.addEventListener('click', () => processUserTransferAction('refunded'));
-
-  function processUserTransferAction(action) {
-      const idx = window.currentTransferIndex;
-      if (idx < 0) return;
-      const history = settings.chatHistory[currentChatId];
-      const c = settings.contacts.find(x => x.id === currentChatId);
-      
-      let oldContent = history[idx].content;
-      oldContent = oldContent.replace('data-status="pending"', `data-status="${action}"`);
-      history[idx].content = oldContent;
-
-      if (action === 'received') {
-          updateWallet(window.currentTransferAmt, `收到 ${c.remark || c.name} 的转账`);
-      }
-
-      const sysText = action === 'received' ? `你已收款` : `你退还了转账`;
-      history.push({ role: 'system', content: sysText, time: formatTime(new Date()) });
-      
-      saveSettings();
-      renderChatHistory();
-      document.getElementById('receive-transfer-modal').classList.add('hidden');
-  }
-
-  let isIvMultiSelect = false;
-  document.getElementById('iv-multi-select-btn')?.addEventListener('click', function() {
-      isIvMultiSelect = !isIvMultiSelect;
-      this.textContent = isIvMultiSelect ? '取消' : '多选';
-      window.renderInnerVoiceList();
-  });
-
-  document.getElementById('iv-select-all')?.addEventListener('change', (e) => {
-      document.querySelectorAll('.iv-cb').forEach(cb => cb.checked = e.target.checked);
-  });
-
-  document.getElementById('iv-delete-selected')?.addEventListener('click', () => {
-      const checked = Array.from(document.querySelectorAll('.iv-cb:checked')).map(cb => parseInt(cb.value)).sort((a,b) => b-a);
-      if(checked.length === 0) return window.showToast('未选择任何项');
-      if(confirm(`确定删除选中的 ${checked.length} 条心声吗？`)) {
-          const c = settings.contacts.find(x => x.id === currentChatId);
-          checked.forEach(origIdx => c.innerVoices.splice(origIdx, 1));
-          saveSettings(); window.renderInnerVoiceList(); window.showToast('已删除');
-      }
-  });
-
-  window.renderInnerVoiceList = function() {
-    const list = document.getElementById('iv-list');
-    list.innerHTML = '';
-    document.getElementById('iv-multi-action-bar').classList.toggle('hidden', !isIvMultiSelect);
-    
-    const c = settings.contacts.find(x => x.id === currentChatId);
-    if (!c.innerVoices || c.innerVoices.length === 0) {
-      list.innerHTML = '<div style="text-align:center; color:#999; padding: 40px 0;">暂无心声记录，点击右上角生成</div>';
-      return;
-    }
-    
-    [...c.innerVoices].reverse().forEach((iv, reverseIdx) => {
-      const origIdx = c.innerVoices.length - 1 - reverseIdx;
-      const card = document.createElement('div');
-      card.className = 'iv-card';
-      
-      let cbHtml = isIvMultiSelect ? `<div class="iv-checkbox-wrap"><input type="checkbox" class="ios-checkbox iv-cb" value="${origIdx}"></div>` : '';
-      
-      card.innerHTML = `
-        ${cbHtml}
-        <div class="iv-card-header">
-          <span class="iv-time">${iv.time}</span>
-          <span class="iv-mood">${iv.mood || '平静'}</span>
-        </div>
-        <div class="iv-section">
-          <span class="iv-label">当前的动作</span>
-          <span class="iv-text">${iv.fact}</span>
-        </div>
-        <div class="iv-section">
-          <span class="iv-label">内心独白</span>
-          <span class="iv-text">"${iv.thought}"</span>
-        </div>
-      `;
-      
-      if (isIvMultiSelect) {
-          card.onclick = (e) => {
-              if (e.target.tagName !== 'INPUT') {
-                  const cb = card.querySelector('.iv-cb');
-                  if (cb) cb.checked = !cb.checked;
-              }
-          };
-      }
-      list.appendChild(card);
-    });
-  };
-
-  document.getElementById('btn-inner-voice')?.addEventListener('click', () => {
-    isIvMultiSelect = false;
-    const btn = document.getElementById('iv-multi-select-btn');
-    if(btn) btn.textContent = '多选';
-    window.renderInnerVoiceList();
-    document.getElementById('inner-voice-modal').classList.remove('hidden');
-  });
-
-  document.getElementById('iv-close')?.addEventListener('click', () => {
-    document.getElementById('inner-voice-modal').classList.add('hidden');
-  });
-
-  document.getElementById('iv-regen')?.addEventListener('click', async () => {
-    if (!settings.apiUrl || !settings.apiKey || !settings.apiModel) return window.showToast("请先配置 API！");
-    const c = settings.contacts.find(x => x.id === currentChatId);
-    const history = settings.chatHistory[currentChatId] || [];
-    if (history.length === 0) return window.showToast("暂无聊天记录可生成心声");
-
-    const btn = document.getElementById('iv-regen');
-    btn.textContent = '感知中...'; btn.style.opacity = '0.7';
-
-    try {
-      const recentHistory = history.slice(-10).map(m => `${m.role === 'user' ? '用户' : c.name}: ${m.content.replace(/<[^>]*>?/gm, '')}`).join('\n');
-      
-      const prompt = `你现在是${c.name}。根据以下最近的聊天记录，推测你此时此刻的内心活动。
-请严格返回 JSON 格式数据，不要有任何其他多余文本：
-{
-  "mood": "当前的情绪状态（如：吃醋、开心、失落，2-4个字）",
-  "fact": "用第三人称描写你此时此刻正在做的一个小动作或微表情（如：不自觉地咬了咬下唇，手指在屏幕上无意识地划动）",
-  "thought": "用第一人称写下你此时最真实的内心独白（如：可恶，他居然真的拒绝了，好气哦！）"
-}
-
-聊天记录：
-${recentHistory}`;
-
-      const res = await fetch(`${settings.apiUrl}/chat/completions`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${settings.apiKey}` },
-        body: JSON.stringify({ 
-            model: settings.apiModel, 
-            messages: [{role: 'user', content: prompt}], 
-            temperature: 0.8,
-            response_format: { type: "json_object" }
-        })
-      });
-      
-      const data = await res.json();
-      const result = JSON.parse(data.choices[0].message.content);
-      
-      if (!c.innerVoices) c.innerVoices = [];
-      c.innerVoices.push({
-        time: formatTime(new Date()) + ' ' + new Date().toLocaleDateString(),
-        mood: result.mood, fact: result.fact, thought: result.thought
-      });
-      
-      saveSettings();
-      window.renderInnerVoiceList();
-      window.showToast('心声已记录');
-    } catch (err) {
-      window.showToast('生成心声失败，请检查API或稍后再试');
-      console.error(err);
-    } finally {
-      btn.textContent = '生成心声'; btn.style.opacity = '1';
-    }
-  });
-
-  console.log('✅ 系统初始化完成！');
-});
+      chatGenBtn.
