@@ -719,7 +719,7 @@
         <!-- 6. 其他 (危险操作与管理) -->
         <div class="cs-section">
           <div class="cs-section-title" style="color: #ef4444;">⚠️ 管理与危险操作</div>
-          <div class="cs-item" onclick="showToast('拉黑功能开发中...')">
+          <div class="cs-item" onclick="showBlockManagerModal()">
             <div class="cs-item-info"><span>拉黑管理 (双向)</span></div><div class="cs-item-ctrl">›</div>
           </div>
           <div class="cs-item" id="btn-export-chat-json">
@@ -980,6 +980,83 @@
         
         <div id="gift-detail-desc" style="font-size: 14px; color: #555; line-height: 1.6; background: rgba(248,168,195,0.1); padding: 16px; border-radius: 16px; text-align: left;">
           尚未生成贺卡
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- 🚨 双击编辑消息弹窗 -->
+  <div class="modal-backdrop hidden" id="edit-msg-modal" style="z-index: 300;">
+    <div class="modal">
+      <header class="modal-header">
+        <button class="btn-secondary btn-sm" onclick="document.getElementById('edit-msg-modal').classList.add('hidden')">取消</button>
+        <h3>编辑消息</h3>
+        <button class="btn-primary btn-sm" id="btn-save-edit-msg">保存</button>
+      </header>
+      <section class="modal-body">
+        <textarea id="inp-edit-msg" class="sys-input" rows="6" placeholder="修改消息内容..."></textarea>
+      </section>
+    </div>
+  </div>
+
+  <!-- 🚨 拉黑管理弹窗 -->
+  <div class="modal-backdrop hidden" id="block-manager-modal" style="z-index: 300;">
+    <div class="modal">
+      <header class="modal-header">
+        <button class="btn-secondary btn-sm" onclick="document.getElementById('block-manager-modal').classList.add('hidden')">关闭</button>
+        <h3>拉黑管理</h3>
+        <div style="width:40px"></div>
+      </header>
+      <section class="modal-body">
+        <div class="form-group">
+          <label>你对角色的拉黑状态</label>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span id="bm-my-status" style="font-weight:600;">正常聊天中</span>
+            <button class="btn-secondary btn-sm" id="btn-toggle-my-block" onclick="toggleMyBlock()">拉黑此角色</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>角色对你的拉黑状态</label>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span id="bm-ai-status" style="font-weight:600;">正常聊天中</span>
+            <button class="btn-secondary btn-sm" id="btn-toggle-ai-block" onclick="forceUnblockAI()">强制解除拉黑</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- 🚨 发送解除拉黑申请弹窗 (User -> AI) -->
+  <div class="modal-backdrop hidden" id="unblock-request-modal" style="z-index: 300;">
+    <div class="modal">
+      <header class="modal-header">
+        <button class="btn-secondary btn-sm" onclick="document.getElementById('unblock-request-modal').classList.add('hidden')">取消</button>
+        <h3>解除拉黑申请</h3>
+        <button class="btn-primary btn-sm" id="btn-send-unblock-req">发送</button>
+      </header>
+      <section class="modal-body">
+        <div class="form-group">
+          <label>申请留言</label>
+          <textarea id="inp-unblock-req" class="sys-input" rows="3" placeholder="写点什么让TA原谅你..."></textarea>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- 🚨 收到解除拉黑申请弹窗 (AI -> User) -->
+  <div class="modal-backdrop hidden" id="ai-unblock-request-modal" style="z-index: 400;">
+    <div class="modal">
+      <header class="modal-header">
+        <h3>解除拉黑申请</h3>
+      </header>
+      <section class="modal-body" style="text-align:center;">
+        <div style="margin-bottom: 20px; font-size: 14px; color: #555; text-align: left;">
+          <p style="margin-bottom:8px; font-weight:bold;">对方留言：</p>
+          <p id="ai-unblock-req-msg" style="background: rgba(248,168,195,0.1); padding: 12px; border-radius: 12px; font-style: italic; color:#333;"></p>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn-secondary" id="btn-reject-ai-unblock" style="flex:1;">拒绝</button>
+          <button class="btn-primary" id="btn-accept-ai-unblock" style="flex:1;">同意</button>
         </div>
       </section>
     </div>
