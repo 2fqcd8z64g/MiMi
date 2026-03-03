@@ -19,14 +19,14 @@ if (window.marked) {
 document.addEventListener('DOMContentLoaded', function() {
   console.log('✅ DOM已加载，开始初始化...');
 
-  const STORAGE_KEY = 'softphone-settings-v29'; 
+  const STORAGE_KEY = 'softphone-settings-v30'; // 升级版本号，防缓存
 
   const defaultSettings = {
     wallpaper: '', sticker: '', customCss: '',
     iconChat: '', iconWorldbook: '', iconForum: '', iconSettings: '',
     bgInfo: '', bgWallet: '', bgMusic: '', bgAnni: '', bgTodo: '',
     alphaStatus: 85, alphaCard: 92, alphaDock: 85,
-    fontUrl: '', fontFamily: '', fontSize: 14, fontColor: '#4b4548', fontGlowPx: 0, fontGlowColor: '#ffffff',
+    fontUrl: '', fontFamily: '', fontBase64: '', fontSize: 14, fontColor: '#4b4548', fontGlowPx: 0, fontGlowColor: '#ffffff',
     apiUrl: '', apiKey: '', apiModel: '', apiTemp: 0.7,
     apiVoiceGroup: '', apiVoiceKey: '', apiVoiceId: '',
     
@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', function() {
     try {
       let raw = await localforage.getItem(STORAGE_KEY);
       if (!raw) {
-          raw = localStorage.getItem('softphone-settings-v28') || localStorage.getItem('softphone-settings-v27'); 
+          raw = localStorage.getItem('softphone-settings-v29') || await localforage.getItem('softphone-settings-v29'); 
           if (raw) await localforage.setItem(STORAGE_KEY, raw);
       }
       if (!raw) return { ...defaultSettings };
@@ -112,7 +112,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
-      if (file.type.startsWith('audio/')) { callback(e.target.result); return; }
+      if (file.type.startsWith('audio/') || file.name.match(/\.(ttf|woff|woff2|otf)$/i)) { 
+          callback(e.target.result); return; 
+      }
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
@@ -141,17 +143,22 @@ document.addEventListener('DOMContentLoaded', function() {
     root.style.setProperty('--color-card-bg', `rgba(255, 255, 255, ${settings.alphaCard / 100})`);
     root.style.setProperty('--color-dock-bg', `rgba(255, 255, 255, ${settings.alphaDock / 100})`);
 
-    // 🚨 修复：字体自动解析逻辑
-    if (settings.fontUrl) {
-      if (settings.fontUrl.endsWith('.css') || settings.fontUrl.includes('fonts.googleapis.com')) {
-        let link = document.getElementById('user-font-link');
-        if (!link) { link = document.createElement('link'); link.id = 'user-font-link'; link.rel = 'stylesheet'; document.head.appendChild(link); }
-        link.href = settings.fontUrl;
-      } else {
-        let styleTag = document.getElementById('user-font-face');
-        if (!styleTag) { styleTag = document.createElement('style'); styleTag.id = 'user-font-face'; document.head.appendChild(styleTag); }
-        styleTag.textContent = `@font-face { font-family: 'CustomUserFont'; src: url('${settings.fontUrl}'); }`;
-      }
+    // 🚨 字体解析逻辑增强
+    let styleTag = document.getElementById('user-font-face');
+    if (!styleTag) { styleTag = document.createElement('style'); styleTag.id = 'user-font-face'; document.head.appendChild(styleTag); }
+    styleTag.textContent = ''; // 清空
+
+    if (settings.fontBase64) {
+        // 如果有本地上传的字体
+        styleTag.textContent = `@font-face { font-family: 'CustomUserFont'; src: url('${settings.fontBase64}'); font-weight: normal; font-style: normal; }`;
+    } else if (settings.fontUrl) {
+        if (settings.fontUrl.endsWith('.css') || settings.fontUrl.includes('fonts.googleapis.com')) {
+            let link = document.getElementById('user-font-link');
+            if (!link) { link = document.createElement('link'); link.id = 'user-font-link'; link.rel = 'stylesheet'; document.head.appendChild(link); }
+            link.href = settings.fontUrl;
+        } else {
+            styleTag.textContent = `@font-face { font-family: 'CustomUserFont'; src: url('${settings.fontUrl}'); }`;
+        }
     }
     
     let activeFontFamily = settings.fontFamily;
@@ -721,14 +728,31 @@ document.addEventListener('DOMContentLoaded', function() {
     if(saveSettings()) { applySettings(); switchView('settings'); window.showToast('外观与壁纸已保存！'); tempSettings = {}; }
   });
 
+  // 🚨 修复本地字体上传逻辑
+  let tempFontBase64 = '';
+  document.getElementById('inp-font-file')?.addEventListener('change', e => {
+    fileToBase64Compressed(e.target.files[0], res => {
+        tempFontBase64 = res;
+        window.showToast('本地字体已加载，请点击保存');
+    });
+  });
+
   document.getElementById('save-font')?.addEventListener('click', () => {
     settings.fontUrl = document.getElementById('inp-font-url').value.trim();
     settings.fontFamily = document.getElementById('inp-font-family').value.trim();
+    if (tempFontBase64) settings.fontBase64 = tempFontBase64;
+    
     settings.fontSize = document.getElementById('inp-font-size').value;
     settings.fontColor = document.getElementById('inp-font-color').value;
     settings.fontGlowPx = document.getElementById('inp-font-glow').value;
     settings.fontGlowColor = document.getElementById('inp-glow-color').value;
-    if(saveSettings()){ applySettings(); switchView('settings'); window.showToast('字体设置已保存！'); }
+    
+    if(saveSettings()){ 
+        applySettings(); 
+        switchView('settings'); 
+        window.showToast('字体设置已保存！'); 
+        tempFontBase64 = '';
+    }
   });
 
   document.getElementById('save-css')?.addEventListener('click', () => {
@@ -1158,7 +1182,7 @@ document.addEventListener('DOMContentLoaded', function() {
     scrollToBottom();
   }
 
-  // ================== 🚨 AI 生成核心逻辑 (防OOC、去油腻、活人感重构) ==================
+  // ================== 🚨 AI 生成核心逻辑 ==================
   chatGenBtn.addEventListener('click', async () => {
     if (!settings.apiUrl || !settings.apiKey || !settings.apiModel) { window.showToast("请先配置 API！"); return; }
     const c = settings.contacts.find(x => x.id === currentChatId);
@@ -1201,7 +1225,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
 - 语言保持：直白、日常、口语化。不绕圈，不堆书面语。语句可以碎，但情绪要真，实话实说。
 - 可以使用颜文字或者emoji，但是不会每一轮信息都用，要看语境。
 
-【专属隐藏指令】（必须单独占一行）：
+【专属隐藏指令】（必须单独占一行，且不要带任何多余符号）：
 - 想要给用户转账：[转账:金额,备注] (例如: [转账:52.0,去买杯奶茶])
 - 想要发照片：[发送照片:照片画面描述]
 - 想要发语音：[发送语音:时长秒数,语音文字内容]
@@ -1315,8 +1339,9 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
           return `\n||SPLIT||[SYSTEM_MSG] "${c.remark || c.name}" 送给你一份礼物：${giftIcon} ${giftName}\n`;
       });
 
+      // 🚨 修复转账卡片被切分的问题 (移除HTML中的换行)
       aiText = aiText.replace(/\[转账[：:]\s*(\d+(\.\d+)?)\s*[，,]\s*(.*?)\]/g, (match, amt, _, note) => {
-          const tHtml = window.createTransferCardHTML(amt, note, 'pending', 'assistant', formatTime(new Date()));
+          const tHtml = window.createTransferCardHTML(amt, note, 'pending', 'assistant', formatTime(new Date())).replace(/\n/g, '');
           return `\n||SPLIT||${tHtml}\n`;
       });
 
@@ -1426,7 +1451,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
 
   chatMessages.addEventListener('dblclick', (e) => {
     const c = settings.contacts.find(x => x.id === currentChatId);
-    if (c.enablePoke === false) return; // 🚨 防越权：检查是否开启拍一拍
+    if (c.enablePoke === false) return; 
 
     const avatar = e.target.closest('.avatar');
     if (!avatar) return;
@@ -1451,7 +1476,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     longPressIndex = parseInt(row.dataset.index);
     
     pressTimer = setTimeout(() => {
-      // 🚨 如果在多选模式，不弹出长按菜单
+      // 如果在多选模式，不弹出长按菜单
       if (document.getElementById('chat-messages').classList.contains('multi-select-mode')) return;
 
       const menu = document.getElementById('msg-context-menu');
@@ -1474,13 +1499,28 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
   chatMessages.addEventListener('mousedown', startPress); chatMessages.addEventListener('mouseup', cancelPress); chatMessages.addEventListener('mousemove', cancelPress);
   chatMessages.addEventListener('contextmenu', e => { if (e.target.closest('.msg-bubble') || e.target.closest('.msg-system') || e.target.closest('.transfer-card-new')) e.preventDefault(); });
 
-  // 🚨 多选点击选中逻辑
+  // 🚨 修复：多选点击选中逻辑 + 语音转文字展开逻辑
   chatMessages.addEventListener('click', (e) => {
       if (chatMessages.classList.contains('multi-select-mode')) {
           const row = e.target.closest('.msg-row');
           if (row && e.target.tagName !== 'INPUT') {
               const cb = row.querySelector('.msg-cb');
               if(cb) cb.checked = !cb.checked;
+          }
+      } else {
+          // 🚨 语音气泡点击展示文字
+          const voiceBubble = e.target.closest('.msg-bubble.voice');
+          if (voiceBubble) {
+              const hiddenText = voiceBubble.querySelector('.voice-hidden-text');
+              if (hiddenText) {
+                  if (hiddenText.style.display === 'none') {
+                      hiddenText.style.display = 'block';
+                      hiddenText.classList.add('voice-trans-text');
+                  } else {
+                      hiddenText.style.display = 'none';
+                      hiddenText.classList.remove('voice-trans-text');
+                  }
+              }
           }
       }
   });
@@ -1497,11 +1537,9 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       document.getElementById('chat-extra-menu').classList.add('hidden');
     }
     if (e.target.classList.contains('modal-backdrop')) {
-      // 🚨 防止点击背景关闭详情页时，误关底层设置页
       if (e.target.id === 'char-details-modal') {
           e.target.classList.add('hidden');
       } else if (e.target.id === 'chat-settings-modal') {
-          // 只有当详情页关闭时，点击设置页背景才能关闭设置页
           if (document.getElementById('char-details-modal').classList.contains('hidden')) {
               e.target.classList.add('hidden');
           }
@@ -1511,14 +1549,14 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     }
   });
 
-  // 🚨 引用相关函数
+  // 引用相关函数
   function clearQuote() {
       currentQuoteText = '';
       document.getElementById('quote-preview-bar').classList.add('hidden');
   }
   document.getElementById('btn-close-quote').addEventListener('click', clearQuote);
 
-  // 🚨 多选模式相关函数
+  // 多选模式相关函数
   function enterMultiSelectMode() {
       document.getElementById('chat-messages').classList.add('multi-select-mode');
       document.getElementById('chat-input-bar').classList.add('hidden');
@@ -1542,7 +1580,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       }
   });
 
-  // 🚨 转发逻辑
+  // 转发逻辑
   document.getElementById('btn-multi-forward').addEventListener('click', () => {
       const checked = Array.from(document.querySelectorAll('.msg-cb:checked')).map(cb => parseInt(cb.value));
       if(checked.length === 0) return window.showToast('未选择任何消息');
@@ -1550,7 +1588,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       const listEl = document.getElementById('forward-contact-list');
       listEl.innerHTML = '';
       settings.contacts.forEach(c => {
-          if (c.id === currentChatId) return; // 不能转给自己
+          if (c.id === currentChatId) return; 
           const div = document.createElement('div');
           div.style.cssText = 'padding: 12px; border-bottom: 1px solid #eee; display:flex; align-items:center; gap:10px; cursor:pointer;';
           const bg = c.avatar ? `style="background-image:url('${c.avatar}')"` : '';
@@ -1566,7 +1604,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
                   const sender = msg.role === 'user' ? '我' : (sourceChar.remark || sourceChar.name);
                   let content = msg.content;
                   if (content.includes('<img')) content = '[图片]';
-                  else content = content.replace(/<[^>]*>?/gm, ''); // 剥离HTML
+                  else content = content.replace(/<[^>]*>?/gm, ''); 
                   forwardText += `${sender}: ${content}\n`;
               });
 
@@ -1595,7 +1633,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
         history.splice(longPressIndex, 1); saveSettings(); renderChatHistory(); window.showToast('已删除');
       }
     } else if (action === 'rewind') {
-      // 🚨 新增：回溯功能
       if(confirm('确定要回溯到此处吗？这会删除此消息之后的所有对话！')) {
         history.splice(longPressIndex + 1); saveSettings(); renderChatHistory(); window.showToast('已回溯');
       }
@@ -1617,19 +1654,16 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       });
       saveSettings(); renderProfilePage(); window.showToast('已加入收藏');
     } else if (action === 'reply') {
-      // 🚨 新增：引用功能
       let rawText = msgObj.content;
       if (rawText.includes('<img')) rawText = '[图片]';
-      else rawText = rawText.replace(/<[^>]*>?/gm, ''); // 剥离HTML
+      else rawText = rawText.replace(/<[^>]*>?/gm, ''); 
       
       currentQuoteText = rawText;
       document.getElementById('quote-preview-text').textContent = rawText;
       document.getElementById('quote-preview-bar').classList.remove('hidden');
       chatInput.focus();
     } else if (action === 'select') {
-      // 🚨 新增：多选模式
       enterMultiSelectMode();
-      // 默认勾选当前长按的这一条
       setTimeout(() => {
           const row = document.querySelector(`.msg-row[data-index="${longPressIndex}"]`);
           if(row) row.querySelector('.msg-cb').checked = true;
@@ -1646,7 +1680,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
   document.getElementById('btn-chat-settings').addEventListener('click', () => {
     const c = settings.contacts.find(x => x.id === currentChatId);
     
-    // 1. 人物名片回显
     document.getElementById('cs-profile-bg').style.backgroundImage = c.profileBg ? `url('${c.profileBg}')` : 'none';
     document.getElementById('cs-avatar-back').style.backgroundImage = c.avatar ? `url('${c.avatar}')` : 'none';
     document.getElementById('cs-avatar-front').style.backgroundImage = c.avatar ? `url('${c.avatar}')` : 'none';
@@ -1654,18 +1687,15 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     document.getElementById('cs-disp-id').textContent = `ID: ${c.id.replace('char_', 'user_')}`;
     document.getElementById('cs-disp-bio').textContent = c.signature || '暂无介绍';
 
-    // 2. 记忆回显
     document.getElementById('cs-memory-limit').value = c.memoryLimit || 50;
     document.getElementById('cs-global-memory').checked = c.globalMemory || false;
     document.getElementById('cs-share-memory').checked = c.shareMemory || false;
     document.getElementById('cs-auto-summary').checked = c.autoSummary || false;
     document.getElementById('cs-summary-interval').value = c.summaryInterval || 30;
 
-    // 3. 现实感知回显
     document.getElementById('cs-time-aware').checked = c.timeAwareness || false;
     document.getElementById('cs-weather-aware').checked = c.weatherAwareness || false;
 
-    // 4. 美化回显
     document.getElementById('cs-show-avatar').checked = c.showAvatar !== false;
     document.getElementById('cs-avatar-shape').value = c.avatarShape || 'circle';
     document.getElementById('cs-avatar-size').value = c.avatarSize || 32;
@@ -1673,7 +1703,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     document.getElementById('cs-global-css').value = c.globalCss || '';
     document.getElementById('cs-ui-color').value = c.uiColor || '#4b4548';
 
-    // 5. 互动回显
     document.getElementById('cs-show-timestamp').checked = c.timestamps !== false;
     document.getElementById('cs-enable-poke').checked = c.enablePoke !== false;
     document.getElementById('cs-proactive-msg').checked = c.proactive || false;
@@ -1682,7 +1711,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     document.getElementById('chat-settings-modal').classList.remove('hidden');
   });
 
-  // 打开人物详情编辑
   window.showCharDetailsModal = function() {
     const c = settings.contacts.find(x => x.id === currentChatId);
     document.getElementById('cd-avatar-preview').style.backgroundImage = c.avatar ? `url('${c.avatar}')` : 'none';
@@ -1692,7 +1720,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     document.getElementById('cd-personality').value = c.personality || '';
     document.getElementById('cd-persona').value = c.persona || '';
     
-    // 填充世界书 (预留世界书数据结构)
     const wbSelect = document.getElementById('cd-worldbook');
     wbSelect.innerHTML = '<option value="">未关联</option>';
     if(settings.worldbooks) {
@@ -1704,7 +1731,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
         });
     }
 
-    // 填充面具
     const mypSelect = document.getElementById('cd-mypersona');
     mypSelect.innerHTML = '<option value="">默认身份</option>';
     settings.personas.forEach(p => {
@@ -1717,7 +1743,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     document.getElementById('char-details-modal').classList.remove('hidden');
   };
 
-  // 保存人物详情
   let tempCdAvatar = null;
   document.getElementById('cd-avatar-upload').addEventListener('change', e => fileToBase64Compressed(e.target.files[0], res => {
       tempCdAvatar = res;
@@ -1738,7 +1763,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       saveSettings();
       document.getElementById('char-details-modal').classList.add('hidden');
       
-      // 同步更新名片层 UI
       document.getElementById('cs-avatar-back').style.backgroundImage = c.avatar ? `url('${c.avatar}')` : 'none';
       document.getElementById('cs-avatar-front').style.backgroundImage = c.avatar ? `url('${c.avatar}')` : 'none';
       document.getElementById('cs-disp-name').textContent = c.remark || c.realName || c.name;
@@ -1747,7 +1771,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       tempCdAvatar = null;
   });
 
-  // 图片上传监听
   document.getElementById('cs-bg-upload').addEventListener('change', e => fileToBase64Compressed(e.target.files[0], res => {
       window.tempCsProfileBg = res;
       document.getElementById('cs-profile-bg').style.backgroundImage = `url('${res}')`;
@@ -1757,7 +1780,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       window.showToast('聊天背景已选择，请点击保存');
   }));
 
-  // 保存主设置面板
   document.getElementById('cs-cancel').addEventListener('click', () => document.getElementById('chat-settings-modal').classList.add('hidden'));
   document.getElementById('cs-save').addEventListener('click', () => {
     const c = settings.contacts.find(x => x.id === currentChatId);
@@ -1790,14 +1812,13 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
 
     if(saveSettings()) {
       document.getElementById('chat-settings-modal').classList.add('hidden');
-      openChatRoom(currentChatId); // 重新渲染聊天室 UI
-      renderChatList(); // 刷新列表备注名
+      openChatRoom(currentChatId); 
+      renderChatList(); 
       window.showToast('聊天设置已保存');
       window.tempCsProfileBg = null; window.tempCsChatBg = null;
     }
   });
 
-  // 清空与删除逻辑
   window.clearSpecificChat = function(includeMemory) {
       const msg = includeMemory ? '确定清空聊天记录和所有记忆/心声吗？此操作不可逆！' : '确定仅清空聊天记录吗？';
       if(confirm(msg)) {
@@ -1824,7 +1845,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       }
   };
 
-  // 导出单人聊天记录
   document.getElementById('btn-export-chat-json').addEventListener('click', () => {
       const c = settings.contacts.find(x => x.id === currentChatId);
       const history = settings.chatHistory[currentChatId] || [];
@@ -1834,7 +1854,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       document.body.appendChild(a); a.click(); a.remove(); window.showToast('导出成功！');
   });
 
-  // 导入单人聊天记录
   document.getElementById('inp-import-chat').addEventListener('change', (e) => {
       const file = e.target.files[0]; if (!file) return;
       const reader = new FileReader();
@@ -1860,7 +1879,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
 
   // ================== 🚨 修复补充：缺失的弹窗和面板切换逻辑 ==================
 
-  // 🎵 1. 音乐播放器相关
   window.showMusicModal = function() {
     document.getElementById('inp-music-title').value = settings.music.title || '';
     document.getElementById('inp-music-artist').value = settings.music.artist || '';
@@ -1895,7 +1913,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     }
     
     saveSettings();
-    applySettings(); // 更新首页 UI
+    applySettings(); 
     document.getElementById('music-modal').classList.add('hidden');
     window.showToast('音乐设置已保存');
   });
@@ -1921,7 +1939,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     }
   };
 
-  // 📅 2. 纪念日相关
   window.showAnniModal = function() {
     document.getElementById('inp-anni-title').value = settings.widgetAnni.title || '';
     document.getElementById('inp-anni-date').value = settings.widgetAnni.date || '';
@@ -1937,7 +1954,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     window.showToast('纪念日已保存');
   });
 
-  // 💬 3. 聊天界面底部面板切换 (表情包与更多功能)
   window.toggleStickerPanel = function() {
     const panel = document.getElementById('chat-sticker-panel');
     const extra = document.getElementById('chat-extra-menu');
@@ -1945,7 +1961,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       panel.classList.add('hidden');
     } else {
       extra.classList.add('hidden');
-      renderStickerPanel(); // 渲染表情包
+      renderStickerPanel(); 
       panel.classList.remove('hidden');
     }
   };
@@ -1961,7 +1977,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     }
   };
 
-  // 😊 4. 表情包管理与发送
   window.showStickerManagerModal = function() {
     document.getElementById('chat-sticker-panel').classList.add('hidden');
     renderStickerManagerList();
@@ -2046,7 +2061,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     renderList(activeGroup);
   }
 
-  // 🎙️ 5. 假装发语音
   window.showFakeVoiceModal = function() {
     document.getElementById('chat-extra-menu').classList.add('hidden');
     document.getElementById('inp-fake-voice').value = '';
@@ -2061,14 +2075,12 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     const c = settings.contacts.find(x => x.id === currentChatId);
     appendMsgToUI('user', vHtml, settings.chatHistory[currentChatId].length, time, c.timestamps !== false);
     
-    // 发给AI时，告诉AI这是语音
     settings.chatHistory[currentChatId].push({ role: 'user', content: vHtml, time: time });
     updateContactLastMsg(currentChatId, '[语音]', time);
     saveSettings(); scrollToBottom();
     document.getElementById('fake-voice-modal').classList.add('hidden');
   });
 
-  // 📷 6. 假装拍照
   window.showFakePhotoModal = function() {
     document.getElementById('chat-extra-menu').classList.add('hidden');
     document.getElementById('inp-fake-photo').value = '';
@@ -2088,7 +2100,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     document.getElementById('fake-photo-modal').classList.add('hidden');
   });
 
-  // 💸 7. 发起转账
   window.showTransferModal = function() {
     document.getElementById('chat-extra-menu').classList.add('hidden');
     document.getElementById('inp-transfer-amount').value = '';
@@ -2101,17 +2112,8 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     let opacity = '1';
     if (status === 'received') { statusText = '已收款'; opacity = '0.7'; }
     if (status === 'refunded') { statusText = '已退还'; opacity = '0.7'; }
-    return `
-    <div class="transfer-card-new" data-status="${status}" data-amount="${amount}" style="opacity: ${opacity};">
-      <div class="transfer-card-top">
-        <div class="transfer-icon-area"><div class="transfer-icon-circle">¥</div></div>
-        <div class="transfer-content">
-          <div class="transfer-amount">¥${amount}</div>
-          <div class="transfer-note">${note}</div>
-        </div>
-      </div>
-      <div class="transfer-time">${statusText}</div>
-    </div>`;
+    // 🚨 修复：去掉 HTML 里的换行符，防止被 AI 解析器切分成多段
+    return `<div class="transfer-card-new" data-status="${status}" data-amount="${amount}" style="opacity: ${opacity};"><div class="transfer-card-top"><div class="transfer-icon-area"><div class="transfer-icon-circle">¥</div></div><div class="transfer-content"><div class="transfer-amount">¥${amount}</div><div class="transfer-note">${note}</div></div></div><div class="transfer-time">${statusText}</div></div>`;
   };
 
   document.getElementById('btn-send-transfer')?.addEventListener('click', () => {
@@ -2136,7 +2138,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     document.getElementById('transfer-modal').classList.add('hidden');
   });
 
-  // 📖 8. 心声记录簿
   window.renderInnerVoiceList = function() {
     const list = document.getElementById('iv-list');
     list.innerHTML = '';
@@ -2145,7 +2146,6 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       list.innerHTML = '<div style="text-align:center; color:#999; padding: 40px 0;">暂无心声记录，点击右上角生成</div>';
       return;
     }
-    // 倒序渲染
     [...c.innerVoices].reverse().forEach((iv, idx) => {
       const card = document.createElement('div');
       card.className = 'iv-card';
@@ -2155,7 +2155,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
           <span class="iv-mood">${iv.mood || '平静'}</span>
         </div>
         <div class="iv-section">
-          <span class="iv-label">客观事实</span>
+          <span class="iv-label">当前的动作</span>
           <span class="iv-text">${iv.fact}</span>
         </div>
         <div class="iv-section">
@@ -2187,11 +2187,13 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
 
     try {
       const recentHistory = history.slice(-10).map(m => `${m.role === 'user' ? '用户' : c.name}: ${m.content.replace(/<[^>]*>?/gm, '')}`).join('\n');
+      
+      // 🚨 修复：将客观事实改为当前的动作
       const prompt = `你现在是${c.name}。根据以下最近的聊天记录，推测你此时此刻的内心活动。
 请严格返回 JSON 格式数据，不要有任何其他多余文本：
 {
   "mood": "当前的情绪状态（如：吃醋、开心、失落，2-4个字）",
-  "fact": "用第三人称客观描述刚刚发生了什么事（如：用户刚刚拒绝了我的邀请）",
+  "fact": "用第三人称描写你此时此刻正在做的一个小动作或微表情（如：不自觉地咬了咬下唇，手指在屏幕上无意识地划动）",
   "thought": "用第一人称写下你此时最真实的内心独白（如：可恶，他居然真的拒绝了，好气哦！）"
 }
 
