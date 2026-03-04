@@ -15,10 +15,11 @@ if (window.marked) {
   marked.setOptions({ breaks: true });
 }
 
+// ================== 等待 DOM 加载完毕后再绑定事件 ==================
 document.addEventListener('DOMContentLoaded', function() {
   console.log('✅ DOM已加载，开始初始化...');
 
-  const STORAGE_KEY = 'softphone-settings-v33'; 
+  const STORAGE_KEY = 'softphone-settings-v32'; 
 
   const defaultSettings = {
     wallpaper: '', sticker: '', customCss: '',
@@ -38,7 +39,9 @@ document.addEventListener('DOMContentLoaded', function() {
     stickers: [ { group: '默认', url: 'https://i.postimg.cc/Jnn0pCvF/tu-ceng-210.png' } ],
     
     personas: [ { id: 'p_default', name: '普通用户', desc: '一个普通的聊天用户，性格随和。', avatar: '' } ],
-    favorites: [], gifts: [], worldbooks: [],
+    favorites: [],
+    gifts: [], 
+    worldbooks: [],
 
     contacts: [
       { 
@@ -46,13 +49,20 @@ document.addEventListener('DOMContentLoaded', function() {
         signature: '点击设置修改签名', avatar: '', profileBg: '',
         persona: '你是一个温柔的AI助手。', personality: '温柔、体贴', 
         worldbook: '', myPersona: '普通用户', 
+        
         chatBg: '', bubbleCss: '', globalCss: '', uiColor: '',
         showAvatar: true, avatarShape: 'circle', avatarSize: 32,
+        
         memoryLimit: 50, globalMemory: false, shareMemory: false, autoSummary: false, summaryInterval: 30,
         timeAwareness: false, weatherAwareness: false,
         timestamps: true, enablePoke: true, proactive: false, proactiveCall: false,
+        
         lastMsg: '你好呀！我是你的 AI 助手~', time: '12:00', pinned: false, isGroup: false,
-        innerVoices: [], isBlockedByMe: false, isBlockedByAI: false
+        innerVoices: [],
+        
+        // 🚨 拉黑状态字段
+        isBlockedByMe: false, // 我是否拉黑了TA
+        isBlockedByAI: false  // TA是否拉黑了我
       }
     ],
     chatHistory: {}
@@ -64,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function() {
     try {
       let raw = await localforage.getItem(STORAGE_KEY);
       if (!raw) {
-          raw = localStorage.getItem('softphone-settings-v32') || await localforage.getItem('softphone-settings-v32') || await localforage.getItem('softphone-settings-v31'); 
+          raw = localStorage.getItem('softphone-settings-v31') || await localforage.getItem('softphone-settings-v31') || await localforage.getItem('softphone-settings-v30'); 
           if (raw) await localforage.setItem(STORAGE_KEY, raw);
       }
       if (!raw) return { ...defaultSettings };
@@ -73,6 +83,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!parsed.contacts) parsed.contacts = defaultSettings.contacts;
       if (!parsed.stickers) parsed.stickers = defaultSettings.stickers;
       if (!parsed.music) parsed.music = defaultSettings.music;
+      
       if (!parsed.user.cover) parsed.user.cover = '';
       if (!parsed.user.status) parsed.user.status = '在线';
       if (!parsed.personas) parsed.personas = defaultSettings.personas;
@@ -82,21 +93,28 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!parsed.worldbooks) parsed.worldbooks = [];
 
       parsed.contacts = parsed.contacts.map(c => ({ 
-          ...defaultSettings.contacts[0], ...c, 
-          innerVoices: c.innerVoices || [], isBlockedByMe: c.isBlockedByMe || false, isBlockedByAI: c.isBlockedByAI || false
+          ...defaultSettings.contacts[0], 
+          ...c, 
+          innerVoices: c.innerVoices || [],
+          isBlockedByMe: c.isBlockedByMe || false,
+          isBlockedByAI: c.isBlockedByAI || false
       }));
       return { ...defaultSettings, ...parsed };
     } catch (e) { return { ...defaultSettings }; }
   }
 
   function saveSettings() {
-    try { localforage.setItem(STORAGE_KEY, JSON.stringify(settings)).catch(e => console.error(e)); return true; } 
-    catch (e) { return false; }
+    try {
+      localforage.setItem(STORAGE_KEY, JSON.stringify(settings)).catch(e => console.error(e));
+      return true; 
+    } catch (e) { return false; }
   }
 
   localforage.ready().then(async () => {
       settings = await loadSettings();
-      applySettings(); renderChatList(); renderProfilePage(); 
+      applySettings();
+      renderChatList();
+      renderProfilePage(); 
       if (!document.getElementById('chat-room-view').classList.contains('hidden')) renderChatHistory();
   });
 
@@ -104,17 +122,21 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
-      if (file.type.startsWith('audio/') || file.name.match(/\.(ttf|woff|woff2|otf)$/i)) { callback(e.target.result); return; }
+      if (file.type.startsWith('audio/') || file.name.match(/\.(ttf|woff|woff2|otf)$/i)) { 
+          callback(e.target.result); return; 
+      }
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        let w = img.width, h = img.height; const maxDim = 800; 
+        let w = img.width, h = img.height;
+        const maxDim = 800; 
         if (w > maxDim || h > maxDim) {
           if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
           else { w = Math.round((w * maxDim) / h); h = maxDim; }
         }
         canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, w, h);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
         callback(canvas.toDataURL('image/jpeg', 0.7));
       };
       img.src = e.target.result;
@@ -153,8 +175,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (match) activeFontFamily = match[1].replace(/\+/g, ' ').split(':')[0];
     }
 
-    if (activeFontFamily) { root.style.setProperty('--font-main', `'${activeFontFamily}', 'CustomUserFont', system-ui, -apple-system, sans-serif`); } 
-    else { root.style.setProperty('--font-main', `'CustomUserFont', system-ui, -apple-system, sans-serif`); }
+    if (activeFontFamily) {
+        root.style.setProperty('--font-main', `'${activeFontFamily}', 'CustomUserFont', system-ui, -apple-system, sans-serif`);
+    } else {
+        root.style.setProperty('--font-main', `'CustomUserFont', system-ui, -apple-system, sans-serif`);
+    }
     
     root.style.setProperty('--font-size-global', settings.fontSize + 'px');
     root.style.setProperty('--font-color-global', settings.fontColor);
@@ -237,7 +262,13 @@ document.addEventListener('DOMContentLoaded', function() {
         list.innerHTML = '<div style="text-align:center; color:#999; padding:20px 0; font-size:13px;">暂无账单明细</div>';
     } else {
         settings.transactions.forEach(t => {
-            list.innerHTML += `<div class="trans-item"><div class="trans-info"><span class="trans-title">${t.title}</span><span class="trans-time">${t.time}</span></div><span class="trans-amt ${t.type}">${t.amount}</span></div>`;
+            list.innerHTML += `<div class="trans-item">
+                <div class="trans-info">
+                    <span class="trans-title">${t.title}</span>
+                    <span class="trans-time">${t.time}</span>
+                </div>
+                <span class="trans-amt ${t.type}">${t.amount}</span>
+            </div>`;
         });
     }
     document.getElementById('wallet-detail-modal').classList.remove('hidden');
@@ -245,7 +276,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
   window.rechargeWallet = function() {
     const amt = prompt('请输入充值金额 (¥)：', '100');
-    if(amt && !isNaN(amt)) { updateWallet(parseFloat(amt), '手动充值'); showWalletModal(); window.showToast('充值成功'); }
+    if(amt && !isNaN(amt)) {
+        updateWallet(parseFloat(amt), '手动充值');
+        showWalletModal(); 
+        window.showToast('充值成功');
+    }
   }
 
   window.showGiftDetail = function(giftId) {
@@ -266,32 +301,45 @@ document.addEventListener('DOMContentLoaded', function() {
         btnGen.style.display = 'inline-block';
         btnGen.onclick = () => generateGiftMessage(g);
     }
+    
     document.getElementById('gift-detail-modal').classList.remove('hidden');
   }
 
   async function generateGiftMessage(g) {
     const descEl = document.getElementById('gift-detail-desc');
     const btnGen = document.getElementById('btn-generate-gift-msg');
-    if (!settings.apiUrl || !settings.apiKey || !settings.apiModel) { window.showToast("请先配置 API！"); return; }
+    
+    if (!settings.apiUrl || !settings.apiKey || !settings.apiModel) {
+        window.showToast("请先配置 API！");
+        return;
+    }
+
     btnGen.style.display = 'none';
     descEl.innerHTML = '<span style="color:var(--color-accent);">AI 正在为你写贺卡... ✨</span>';
 
     try {
         const c = settings.contacts.find(x => x.id === g.senderId) || settings.contacts[0];
-        const sysPrompt = `你是${c.name}。性格：${c.personality}。人设：${c.persona}。你刚刚送给用户一份礼物：${g.icon} ${g.name}。请写一段送礼寄语（不超过50字）。不要有任何多余的解释或动作描写，直接说出你想对TA说的话。`;
+        const sysPrompt = `你是${c.name}。性格：${c.personality}。人设：${c.persona}。
+你刚刚送给用户一份礼物：${g.icon} ${g.name}。
+请用符合你人设、简短、温柔、有苏感的语气写一段送礼寄语（不超过50字）。不要有任何多余的解释或动作描写，直接说出你想对TA说的话。`;
+        
         const res = await fetch(`${settings.apiUrl}/chat/completions`, {
             method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${settings.apiKey}` },
             body: JSON.stringify({ model: settings.apiModel, messages: [{role:'user', content:sysPrompt}], temperature: 0.8 })
         });
         const data = await res.json();
         const msg = data.choices[0].message.content.trim();
-        g.message = msg; saveSettings(); descEl.innerHTML = marked.parse(msg);
+        g.message = msg;
+        saveSettings();
+        descEl.innerHTML = marked.parse(msg);
     } catch(err) {
-        descEl.textContent = "获取寄语失败：" + err.message; btnGen.style.display = 'inline-block';
+        descEl.textContent = "获取寄语失败：" + err.message;
+        btnGen.style.display = 'inline-block';
     }
   }
 
-  let isFavMultiSelect = false; let isGiftMultiSelect = false;
+  let isFavMultiSelect = false;
+  let isGiftMultiSelect = false;
 
   function renderProfilePage() {
       document.getElementById('profile-name-edit').textContent = settings.user.name;
@@ -306,9 +354,26 @@ document.addEventListener('DOMContentLoaded', function() {
       if (personasList) {
           personasList.innerHTML = '';
           settings.personas.forEach((p, idx) => {
-              const wrap = document.createElement('div'); wrap.className = 'persona-list-wrap';
+              const wrap = document.createElement('div');
+              wrap.className = 'persona-list-wrap';
               const bg = p.avatar ? `style="background-image:url('${p.avatar}')"` : '';
-              wrap.innerHTML = `<div class="persona-scroll-area"><div class="persona-card-content" onclick="editPersona('${p.id}')"><div class="persona-avatar" ${bg}></div><div class="persona-info"><div class="persona-name-row"><span class="persona-name">${p.name}</span><span class="persona-tag">${p.personality || '普通'}</span></div><div class="persona-desc">${p.desc || '暂无描述'}</div></div></div><div class="persona-actions"><button class="persona-btn-delete" onclick="deletePersona(${idx})">删除</button></div></div>`;
+              wrap.innerHTML = `
+                <div class="persona-scroll-area">
+                  <div class="persona-card-content" onclick="editPersona('${p.id}')">
+                    <div class="persona-avatar" ${bg}></div>
+                    <div class="persona-info">
+                        <div class="persona-name-row">
+                          <span class="persona-name">${p.name}</span>
+                          <span class="persona-tag">${p.personality || '普通'}</span>
+                        </div>
+                        <div class="persona-desc">${p.desc || '暂无描述'}</div>
+                    </div>
+                  </div>
+                  <div class="persona-actions">
+                    <button class="persona-btn-delete" onclick="deletePersona(${idx})">删除</button>
+                  </div>
+                </div>
+              `;
               personasList.appendChild(wrap);
           });
       }
@@ -317,16 +382,37 @@ document.addEventListener('DOMContentLoaded', function() {
       if (favList) {
           favList.innerHTML = '';
           document.getElementById('fav-multi-action-bar').classList.toggle('hidden', !isFavMultiSelect);
+          
           if (settings.favorites.length === 0) {
               favList.innerHTML = '<div style="text-align:center;color:#999;padding:20px;font-size:13px;">暂无收藏，长按聊天消息即可收藏</div>';
           } else {
               settings.favorites.forEach((f, idx) => {
-                  const card = document.createElement('div'); card.className = `fav-card ${isFavMultiSelect ? 'selectable' : ''}`;
+                  const card = document.createElement('div');
+                  card.className = `fav-card ${isFavMultiSelect ? 'selectable' : ''}`;
+                  
                   let contentHtml = f.content;
-                  if (f.content.includes('<img')) contentHtml = '[图片]'; else contentHtml = f.content.replace(/<[^>]*>?/gm, ''); 
-                  card.innerHTML = `<div class="fav-cb-wrap"><input type="checkbox" class="ios-checkbox fav-cb" value="${idx}"></div><div class="fav-content-area"><div class="fav-text">${contentHtml}</div><div class="fav-meta"><span>来自: ${f.from}</span><span>${f.time}</span></div></div>`;
-                  if(!isFavMultiSelect) { card.onclick = () => { if(confirm('取消收藏该内容？')) { settings.favorites.splice(idx, 1); saveSettings(); renderProfilePage(); } }; } 
-                  else { card.onclick = (e) => { if(e.target.tagName !== 'INPUT') { const cb = card.querySelector('.fav-cb'); cb.checked = !cb.checked; } } }
+                  if (f.content.includes('<img')) contentHtml = '[图片]';
+                  else contentHtml = f.content.replace(/<[^>]*>?/gm, ''); 
+                  
+                  card.innerHTML = `
+                      <div class="fav-cb-wrap"><input type="checkbox" class="ios-checkbox fav-cb" value="${idx}"></div>
+                      <div class="fav-content-area">
+                        <div class="fav-text">${contentHtml}</div>
+                        <div class="fav-meta"><span>来自: ${f.from}</span><span>${f.time}</span></div>
+                      </div>
+                  `;
+                  if(!isFavMultiSelect) {
+                      card.onclick = () => {
+                          if(confirm('取消收藏该内容？')) { settings.favorites.splice(idx, 1); saveSettings(); renderProfilePage(); }
+                      };
+                  } else {
+                      card.onclick = (e) => {
+                          if(e.target.tagName !== 'INPUT') {
+                              const cb = card.querySelector('.fav-cb');
+                              cb.checked = !cb.checked;
+                          }
+                      }
+                  }
                   favList.appendChild(card);
               });
           }
@@ -336,62 +422,136 @@ document.addEventListener('DOMContentLoaded', function() {
       if (giftList) {
           giftList.innerHTML = '';
           document.getElementById('gift-multi-action-bar').classList.toggle('hidden', !isGiftMultiSelect);
+          
           let hasGift = false;
           settings.gifts.forEach((g, idx) => {
               if (g.count > 0) {
                   hasGift = true;
-                  const item = document.createElement('div'); item.className = `gift-item card-clickable ${isGiftMultiSelect ? 'selectable' : ''}`; item.style.position = 'relative';
+                  const item = document.createElement('div');
+                  item.className = `gift-item card-clickable ${isGiftMultiSelect ? 'selectable' : ''}`;
+                  item.style.position = 'relative';
+                  
                   let cbHtml = isGiftMultiSelect ? `<div style="position:absolute; top:8px; right:8px;"><input type="checkbox" class="ios-checkbox gift-cb" value="${idx}"></div>` : '';
-                  item.innerHTML = `${cbHtml}<div class="gift-icon">${g.icon}</div><div class="gift-name">${g.name}</div><div class="gift-count">x ${g.count}</div>`;
-                  if (!isGiftMultiSelect) { item.onclick = () => showGiftDetail(g.id); } 
-                  else { item.onclick = (e) => { if (e.target.tagName !== 'INPUT') { const cb = item.querySelector('.gift-cb'); if (cb) cb.checked = !cb.checked; } }; }
+                  
+                  item.innerHTML = `
+                      ${cbHtml}
+                      <div class="gift-icon">${g.icon}</div>
+                      <div class="gift-name">${g.name}</div>
+                      <div class="gift-count">x ${g.count}</div>
+                  `;
+                  
+                  if (!isGiftMultiSelect) {
+                      item.onclick = () => showGiftDetail(g.id);
+                  } else {
+                      item.onclick = (e) => {
+                          if (e.target.tagName !== 'INPUT') {
+                              const cb = item.querySelector('.gift-cb');
+                              if (cb) cb.checked = !cb.checked;
+                          }
+                      };
+                  }
                   giftList.appendChild(item);
               }
           });
-          if (!hasGift) { giftList.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#999;padding:20px;font-size:13px;">礼物箱空空如也，快让AI送你礼物吧</div>'; }
+          
+          if (!hasGift) {
+              giftList.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#999;padding:20px;font-size:13px;">礼物箱空空如也，快让AI送你礼物吧</div>';
+          }
       }
   }
 
-  document.getElementById('btn-fav-edit').addEventListener('click', function() { isFavMultiSelect = !isFavMultiSelect; this.textContent = isFavMultiSelect ? '取消' : '多选'; renderProfilePage(); });
-  document.getElementById('fav-select-all').addEventListener('change', (e) => { document.querySelectorAll('.fav-cb').forEach(cb => cb.checked = e.target.checked); });
+  document.getElementById('btn-fav-edit').addEventListener('click', function() {
+      isFavMultiSelect = !isFavMultiSelect;
+      this.textContent = isFavMultiSelect ? '取消' : '多选';
+      renderProfilePage();
+  });
+  document.getElementById('fav-select-all').addEventListener('change', (e) => {
+      document.querySelectorAll('.fav-cb').forEach(cb => cb.checked = e.target.checked);
+  });
   document.getElementById('fav-delete-selected').addEventListener('click', () => {
       const checked = Array.from(document.querySelectorAll('.fav-cb:checked')).map(cb => parseInt(cb.value)).sort((a,b) => b-a);
       if(checked.length === 0) return window.showToast('未选择任何项');
-      if(confirm(`确定删除选中的 ${checked.length} 条收藏吗？`)) { checked.forEach(idx => settings.favorites.splice(idx, 1)); saveSettings(); renderProfilePage(); window.showToast('已删除'); }
+      if(confirm(`确定删除选中的 ${checked.length} 条收藏吗？`)) {
+          checked.forEach(idx => settings.favorites.splice(idx, 1));
+          saveSettings(); renderProfilePage(); window.showToast('已删除');
+      }
   });
 
-  document.getElementById('btn-gift-edit')?.addEventListener('click', function() { isGiftMultiSelect = !isGiftMultiSelect; this.textContent = isGiftMultiSelect ? '取消' : '多选'; renderProfilePage(); });
-  document.getElementById('gift-select-all')?.addEventListener('change', (e) => { document.querySelectorAll('.gift-cb').forEach(cb => cb.checked = e.target.checked); });
+  document.getElementById('btn-gift-edit')?.addEventListener('click', function() {
+      isGiftMultiSelect = !isGiftMultiSelect;
+      this.textContent = isGiftMultiSelect ? '取消' : '多选';
+      renderProfilePage();
+  });
+  document.getElementById('gift-select-all')?.addEventListener('change', (e) => {
+      document.querySelectorAll('.gift-cb').forEach(cb => cb.checked = e.target.checked);
+  });
   document.getElementById('gift-delete-selected')?.addEventListener('click', () => {
       const checked = Array.from(document.querySelectorAll('.gift-cb:checked')).map(cb => parseInt(cb.value)).sort((a,b) => b-a);
       if(checked.length === 0) return window.showToast('未选择任何项');
-      if(confirm(`确定删除选中的 ${checked.length} 个礼物吗？`)) { checked.forEach(idx => settings.gifts.splice(idx, 1)); saveSettings(); renderProfilePage(); window.showToast('已删除'); }
+      if(confirm(`确定删除选中的 ${checked.length} 个礼物吗？`)) {
+          checked.forEach(idx => settings.gifts.splice(idx, 1));
+          saveSettings(); renderProfilePage(); window.showToast('已删除');
+      }
   });
 
-  window.deletePersona = function(idx) { if(confirm('确定删除该面具吗？')) { settings.personas.splice(idx, 1); saveSettings(); renderProfilePage(); window.showToast('已删除'); } }
-  window.editProfileStatus = function() { const newStatus = prompt('请输入你的当前状态（如：在线、忙碌、睡觉中）：', settings.user.status); if (newStatus) { settings.user.status = newStatus; saveSettings(); renderProfilePage(); } };
-  document.getElementById('profile-name-edit').addEventListener('blur', (e) => { settings.user.name = e.target.textContent; document.getElementById('edit-user-name').textContent = settings.user.name; if(saveSettings()) window.showToast('名字已保存'); });
-  document.getElementById('profile-sign-edit').addEventListener('blur', (e) => { settings.user.sign = e.target.textContent; document.getElementById('edit-user-sign').textContent = settings.user.sign; if(saveSettings()) window.showToast('签名已保存'); });
-  document.getElementById('inp-profile-avatar').addEventListener('change', e => { fileToBase64Compressed(e.target.files[0], res => { settings.user.avatar = res; if(saveSettings()){ applySettings(); renderProfilePage(); window.showToast('头像已更换'); } }); });
-  document.getElementById('inp-profile-cover').addEventListener('change', e => { fileToBase64Compressed(e.target.files[0], res => { settings.user.cover = res; if(saveSettings()){ renderProfilePage(); window.showToast('封面已更换'); } }); });
+  window.deletePersona = function(idx) {
+      if(confirm('确定删除该面具吗？')) {
+          settings.personas.splice(idx, 1);
+          saveSettings(); renderProfilePage(); window.showToast('已删除');
+      }
+  }
+
+  window.editProfileStatus = function() {
+      const newStatus = prompt('请输入你的当前状态（如：在线、忙碌、睡觉中）：', settings.user.status);
+      if (newStatus) { settings.user.status = newStatus; saveSettings(); renderProfilePage(); }
+  };
+
+  document.getElementById('profile-name-edit').addEventListener('blur', (e) => {
+      settings.user.name = e.target.textContent; document.getElementById('edit-user-name').textContent = settings.user.name;
+      if(saveSettings()) window.showToast('名字已保存');
+  });
+  document.getElementById('profile-sign-edit').addEventListener('blur', (e) => {
+      settings.user.sign = e.target.textContent; document.getElementById('edit-user-sign').textContent = settings.user.sign;
+      if(saveSettings()) window.showToast('签名已保存');
+  });
+
+  document.getElementById('inp-profile-avatar').addEventListener('change', e => {
+      fileToBase64Compressed(e.target.files[0], res => { 
+          settings.user.avatar = res; 
+          if(saveSettings()){ applySettings(); renderProfilePage(); window.showToast('头像已更换'); } 
+      });
+  });
+  document.getElementById('inp-profile-cover').addEventListener('change', e => {
+      fileToBase64Compressed(e.target.files[0], res => { 
+          settings.user.cover = res; 
+          if(saveSettings()){ renderProfilePage(); window.showToast('封面已更换'); } 
+      });
+  });
 
   window.showAddPersonaModal = function() {
       document.getElementById('persona-modal-title').textContent = '新建面具';
-      document.getElementById('inp-persona-id').value = ''; document.getElementById('inp-persona-name').value = '';
-      document.getElementById('inp-persona-personality').value = ''; document.getElementById('inp-persona-desc').value = '';
+      document.getElementById('inp-persona-id').value = '';
+      document.getElementById('inp-persona-name').value = '';
+      document.getElementById('inp-persona-personality').value = '';
+      document.getElementById('inp-persona-desc').value = '';
       document.getElementById('persona-modal').classList.remove('hidden');
   };
 
   window.editPersona = function(id) {
-      const p = settings.personas.find(x => x.id === id); if (!p) return;
+      const p = settings.personas.find(x => x.id === id);
+      if (!p) return;
       document.getElementById('persona-modal-title').textContent = '编辑面具';
-      document.getElementById('inp-persona-id').value = p.id; document.getElementById('inp-persona-name').value = p.name;
-      document.getElementById('inp-persona-personality').value = p.personality || ''; document.getElementById('inp-persona-desc').value = p.desc;
+      document.getElementById('inp-persona-id').value = p.id;
+      document.getElementById('inp-persona-name').value = p.name;
+      document.getElementById('inp-persona-personality').value = p.personality || '';
+      document.getElementById('inp-persona-desc').value = p.desc;
       document.getElementById('persona-modal').classList.remove('hidden');
   };
 
   let tempPersonaAvatar = '';
-  document.getElementById('inp-persona-avatar').addEventListener('change', e => { fileToBase64Compressed(e.target.files[0], res => tempPersonaAvatar = res); });
+  document.getElementById('inp-persona-avatar').addEventListener('change', e => {
+      fileToBase64Compressed(e.target.files[0], res => tempPersonaAvatar = res);
+  });
 
   document.getElementById('btn-save-persona').addEventListener('click', () => {
       const id = document.getElementById('inp-persona-id').value;
@@ -402,17 +562,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
       if (id) {
           const p = settings.personas.find(x => x.id === id);
-          if (p) { p.name = name; p.personality = personality; p.desc = desc; if (tempPersonaAvatar) p.avatar = tempPersonaAvatar; }
+          if (p) {
+              p.name = name; p.personality = personality; p.desc = desc;
+              if (tempPersonaAvatar) p.avatar = tempPersonaAvatar;
+          }
       } else {
-          settings.personas.push({ id: 'p_' + Date.now(), name: name, personality: personality, desc: desc, avatar: tempPersonaAvatar });
+          settings.personas.push({
+              id: 'p_' + Date.now(),
+              name: name, personality: personality, desc: desc,
+              avatar: tempPersonaAvatar
+          });
       }
+      
       tempPersonaAvatar = ''; saveSettings(); renderProfilePage();
-      document.getElementById('persona-modal').classList.add('hidden'); window.showToast('面具保存成功');
+      document.getElementById('persona-modal').classList.add('hidden');
+      window.showToast('面具保存成功');
   });
 
   function updateAnniversary() {
     if(!settings.widgetAnni.date) return;
-    const target = new Date(settings.widgetAnni.date); const diff = target - new Date();
+    const target = new Date(settings.widgetAnni.date);
+    const diff = target - new Date();
     const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
     document.getElementById('anni-days').textContent = Math.abs(days);
     const dayStr = ['日','一','二','三','四','五','六'][target.getDay()];
@@ -420,9 +590,11 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function renderTodos() {
-    const list = document.getElementById('todo-list'); list.innerHTML = '';
+    const list = document.getElementById('todo-list');
+    list.innerHTML = '';
     settings.widgetTodo.items.forEach((item, idx) => {
-      const li = document.createElement('li'); li.className = 'todo-item'; li.textContent = item;
+      const li = document.createElement('li');
+      li.className = 'todo-item'; li.textContent = item;
       li.oncontextmenu = (e) => { e.preventDefault(); if(confirm('删除此待办？')){ settings.widgetTodo.items.splice(idx, 1); if(saveSettings()) renderTodos(); } };
       list.appendChild(li);
     });
@@ -446,7 +618,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const text = prompt('输入新的待办事项：');
     if (text) { settings.widgetTodo.items.push(text); if(saveSettings()){ renderTodos(); window.showToast('待办已添加'); } }
   });
-  document.getElementById('todo-list').addEventListener('click', (e) => { if (e.target.classList.contains('todo-item')) e.target.classList.toggle('done'); });
+  document.getElementById('todo-list').addEventListener('click', (e) => {
+    if (e.target.classList.contains('todo-item')) e.target.classList.toggle('done');
+  });
   document.getElementById('inp-avatar').addEventListener('change', e => fileToBase64Compressed(e.target.files[0], res => { settings.user.avatar = res; if(saveSettings()){ applySettings(); renderProfilePage(); window.showToast('头像已更换'); } }));
 
   function updateTopTime() {
@@ -462,20 +636,35 @@ document.addEventListener('DOMContentLoaded', function() {
     dockItems.forEach(btn => btn.classList.toggle('active', btn.dataset.target === viewName));
     const dock = document.getElementById('sys-dock');
     const mainView = document.querySelector('.main-view');
-    if (viewName === 'home') { if(dock) dock.style.display = 'flex'; if(mainView) mainView.classList.remove('no-dock'); } 
-    else { if(dock) dock.style.display = 'none'; if(mainView) mainView.classList.add('no-dock'); }
+    if (viewName === 'home') {
+      if(dock) dock.style.display = 'flex';
+      if(mainView) mainView.classList.remove('no-dock');
+    } else {
+      if(dock) dock.style.display = 'none';
+      if(mainView) mainView.classList.add('no-dock');
+    }
   }
 
-  document.querySelectorAll('[data-target], [data-jump]').forEach(btn => { btn.addEventListener('click', () => { const target = btn.dataset.target || btn.dataset.jump; if (target) switchView(target); }); });
+  document.querySelectorAll('[data-target], [data-jump]').forEach(btn => {
+    btn.addEventListener('click', () => { const target = btn.dataset.target || btn.dataset.jump; if (target) switchView(target); });
+  });
+
   document.querySelectorAll('[data-back]').forEach(btn => {
     btn.addEventListener('click', () => {
       const target = btn.dataset.back; if (!target) return;
       if (target === 'settings') { tempSettings = {}; window.showToast('已取消修改'); }
-      if (target === 'chat') { renderChatList(); exitMultiSelectMode(); clearQuote(); }
+      if (target === 'chat') { 
+          renderChatList(); 
+          exitMultiSelectMode(); 
+          clearQuote(); 
+      }
       switchView(target);
     });
   });
-  document.querySelectorAll('[data-subview]').forEach(btn => { btn.addEventListener('click', () => { const target = btn.dataset.subview; switchView(target); initSubView(target); }); });
+
+  document.querySelectorAll('[data-subview]').forEach(btn => {
+    btn.addEventListener('click', () => { const target = btn.dataset.subview; switchView(target); initSubView(target); });
+  });
 
   const pager = document.querySelector('.home-pager');
   const pagerDots = document.querySelectorAll('#pager-dots .dot');
@@ -490,15 +679,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function initSubView(viewName) {
     if (viewName === 'settings-api') {
-      document.getElementById('api-url').value = settings.apiUrl; document.getElementById('api-key').value = settings.apiKey;
-      document.getElementById('api-temp').value = settings.apiTemp; document.getElementById('temp-val').textContent = settings.apiTemp;
+      document.getElementById('api-url').value = settings.apiUrl;
+      document.getElementById('api-key').value = settings.apiKey;
+      document.getElementById('api-temp').value = settings.apiTemp;
+      document.getElementById('temp-val').textContent = settings.apiTemp;
       if (settings.apiModel) document.getElementById('api-model').innerHTML = `<option value="${settings.apiModel}">${settings.apiModel}</option>`;
     } else if (viewName === 'settings-appearance') {
       document.getElementById('inp-alpha-status').value = settings.alphaStatus; document.getElementById('val-alpha-status').textContent = settings.alphaStatus + '%';
       document.getElementById('inp-alpha-card').value = settings.alphaCard; document.getElementById('val-alpha-card').textContent = settings.alphaCard + '%';
       document.getElementById('inp-alpha-dock').value = settings.alphaDock; document.getElementById('val-alpha-dock').textContent = settings.alphaDock + '%';
     } else if (viewName === 'settings-font') {
-      document.getElementById('inp-font-url').value = settings.fontUrl || ''; document.getElementById('inp-font-family').value = settings.fontFamily;
+      document.getElementById('inp-font-url').value = settings.fontUrl || '';
+      document.getElementById('inp-font-family').value = settings.fontFamily;
       document.getElementById('inp-font-size').value = settings.fontSize; document.getElementById('val-font-size').textContent = settings.fontSize + 'px';
       document.getElementById('inp-font-color').value = settings.fontColor;
       document.getElementById('inp-font-glow').value = settings.fontGlowPx; document.getElementById('val-font-glow').textContent = settings.fontGlowPx + 'px';
@@ -507,8 +699,12 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('inp-custom-css').value = settings.customCss;
     } else if (viewName === 'settings-data') {
       localforage.getItem(STORAGE_KEY).then(data => {
-          if(data) { const kb = (data.length / 1024).toFixed(2); document.getElementById('mem-usage').textContent = `${kb} KB`; } 
-          else { document.getElementById('mem-usage').textContent = `0.00 KB`; }
+          if(data) {
+              const kb = (data.length / 1024).toFixed(2);
+              document.getElementById('mem-usage').textContent = `${kb} KB`;
+          } else {
+              document.getElementById('mem-usage').textContent = `0.00 KB`;
+          }
       });
     }
   }
@@ -522,13 +718,17 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   document.getElementById('btn-fetch-models')?.addEventListener('click', async function() {
-    const btn = this; const url = document.getElementById('api-url').value.trim(); const key = document.getElementById('api-key').value.trim();
+    const btn = this; 
+    const url = document.getElementById('api-url').value.trim();
+    const key = document.getElementById('api-key').value.trim();
     if (!url || !key) { window.showToast('请先填写 URL 和 Key！'); return; }
     btn.textContent = '拉取中...'; btn.style.opacity = '0.7';
     try {
       const res = await fetch(`${url}/models`, { headers: { 'Authorization': `Bearer ${key}` } });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json(); const select = document.getElementById('api-model'); select.innerHTML = '';
+      const data = await res.json();
+      const select = document.getElementById('api-model');
+      select.innerHTML = '';
       if(data.data && data.data.length > 0) {
         data.data.forEach(m => { const opt = document.createElement('option'); opt.value = m.id; opt.textContent = m.id; select.appendChild(opt); });
         btn.textContent = '✅ 连接成功'; btn.classList.add('success');
@@ -536,7 +736,8 @@ document.addEventListener('DOMContentLoaded', function() {
         window.showToast('模型拉取成功！');
       } else { throw new Error('模型列表为空'); }
     } catch (err) {
-      btn.textContent = '❌ 拉取失败'; btn.classList.add('error'); window.showToast('拉取失败: ' + err.message);
+      btn.textContent = '❌ 拉取失败'; btn.classList.add('error');
+      window.showToast('拉取失败: ' + err.message);
       setTimeout(() => { btn.textContent = '拉取模型 (真实请求)'; btn.classList.remove('error'); btn.style.opacity = '1'; }, 2000);
     }
   });
@@ -556,7 +757,11 @@ document.addEventListener('DOMContentLoaded', function() {
     { id: 'inp-bg-info', key: 'bgInfo' }, { id: 'inp-bg-wallet', key: 'bgWallet' },
     { id: 'inp-bg-music', key: 'bgMusic' }, { id: 'inp-bg-anni', key: 'bgAnni' }, { id: 'inp-bg-todo', key: 'bgTodo' }
   ];
-  fileInputs.forEach(item => { document.getElementById(item.id)?.addEventListener('change', e => { fileToBase64Compressed(e.target.files[0], res => tempSettings[item.key] = res); }); });
+  fileInputs.forEach(item => {
+    document.getElementById(item.id)?.addEventListener('change', e => {
+      fileToBase64Compressed(e.target.files[0], res => tempSettings[item.key] = res);
+    });
+  });
 
   document.getElementById('btn-clear-wallpaper')?.addEventListener('click', () => tempSettings.wallpaper = '');
   document.getElementById('btn-clear-sticker')?.addEventListener('click', () => tempSettings.sticker = '');
@@ -571,18 +776,28 @@ document.addEventListener('DOMContentLoaded', function() {
 
   let tempFontBase64 = '';
   document.getElementById('inp-font-file')?.addEventListener('change', e => {
-    fileToBase64Compressed(e.target.files[0], res => { tempFontBase64 = res; window.showToast('本地字体已加载，请点击保存'); });
+    fileToBase64Compressed(e.target.files[0], res => {
+        tempFontBase64 = res;
+        window.showToast('本地字体已加载，请点击保存');
+    });
   });
 
   document.getElementById('save-font')?.addEventListener('click', () => {
     settings.fontUrl = document.getElementById('inp-font-url').value.trim();
     settings.fontFamily = document.getElementById('inp-font-family').value.trim();
     if (tempFontBase64) settings.fontBase64 = tempFontBase64;
+    
     settings.fontSize = document.getElementById('inp-font-size').value;
     settings.fontColor = document.getElementById('inp-font-color').value;
     settings.fontGlowPx = document.getElementById('inp-font-glow').value;
     settings.fontGlowColor = document.getElementById('inp-glow-color').value;
-    if(saveSettings()){ applySettings(); switchView('settings'); window.showToast('字体设置已保存！'); tempFontBase64 = ''; }
+    
+    if(saveSettings()){ 
+        applySettings(); 
+        switchView('settings'); 
+        window.showToast('字体设置已保存！'); 
+        tempFontBase64 = '';
+    }
   });
 
   document.getElementById('save-css')?.addEventListener('click', () => {
@@ -611,7 +826,11 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   
   document.getElementById('btn-clear')?.addEventListener('click', async () => {
-    if (confirm('确定要清理所有缓存数据吗？此操作不可逆！')) { await localforage.clear(); localStorage.clear(); location.reload(); }
+    if (confirm('确定要清理所有缓存数据吗？此操作不可逆！')) { 
+        await localforage.clear(); 
+        localStorage.clear();
+        location.reload(); 
+    }
   });
 
   let currentChatId = 'ai';
@@ -653,6 +872,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  // ================== 🎨 打开聊天房间 (动态美化生效) ==================
   window.openChatRoom = function(id) {
     currentChatId = id;
     const c = settings.contacts.find(x => x.id === id);
@@ -702,7 +922,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     renderChatHistory();
-    updateBlockUI(); 
+    updateBlockUI(); // 🚨 打开房间时检查拉黑状态
     switchView('chat-room');
   }
 
@@ -948,6 +1168,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
+  // 🚨 拦截发送逻辑（拉黑状态下不可发送）
   chatSendBtn.addEventListener('click', () => {
     const c = settings.contacts.find(x => x.id === currentChatId);
     if (c.isBlockedByMe) return window.showToast('你已拉黑对方，无法发送消息');
@@ -1009,7 +1230,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // ================== 🚨 AI 生成核心逻辑 ==================
-chatGenBtn.addEventListener('click', async () => {
+  chatGenBtn.addEventListener('click', async () => {
     if (!settings.apiUrl || !settings.apiKey || !settings.apiModel) { window.showToast("请先配置 API！"); return; }
     const c = settings.contacts.find(x => x.id === currentChatId);
     
@@ -1094,6 +1315,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
           const imgMatch = m.content.match(/<img[^>]+src="([^">]+)"/);
           let textContent = m.content.replace(/<[^>]*>?/gm, '').trim();
           
+          // 🚨 翻译引用块给 AI 听
           if (m.role === 'user' && m.content.includes('class="quote-block"')) {
               const quoteMatch = m.content.match(/<div class="quote-block">(.*?)<\/div>/);
               if (quoteMatch) {
@@ -1169,18 +1391,19 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
           aiText = aiText.replace(/\[撤回消息\]/g, `\n||SPLIT||[ACTION_RECALL]\n`);
       }
 
+      // 🚨 AI 拉黑与解除拉黑逻辑
       if (aiText.includes('[拉黑用户]')) {
           aiText = aiText.replace(/\[拉黑用户\]/g, '');
           c.isBlockedByAI = true;
           saveSettings();
-          window.updateBlockUI();
+          updateBlockUI();
           aiText += `\n||SPLIT||[SYSTEM_MSG] 消息已发出，但被对方拒收了。\n`;
       }
       if (aiText.includes('[解除拉黑]')) {
           aiText = aiText.replace(/\[解除拉黑\]/g, '');
           c.isBlockedByAI = false;
           saveSettings();
-          window.updateBlockUI();
+          updateBlockUI();
           aiText += `\n||SPLIT||[SYSTEM_MSG] "${c.remark || c.name}" 已将你移出黑名单。\n`;
       }
 
@@ -1301,9 +1524,12 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     }
   });
 
+  // 🚨 修复：双击事件分流（拍一拍 vs 编辑消息）
+  let touchTime = 0;
   chatMessages.addEventListener('dblclick', (e) => {
     const c = settings.contacts.find(x => x.id === currentChatId);
     
+    // 1. 双击头像 -> 拍一拍
     const avatar = e.target.closest('.avatar');
     if (avatar) {
         if (c.enablePoke === false) return; 
@@ -1318,6 +1544,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
         return;
     }
 
+    // 2. 🚨 双击气泡 -> 编辑消息
     const bubble = e.target.closest('.msg-bubble');
     if (bubble && !bubble.classList.contains('voice') && !bubble.classList.contains('image-bubble') && !bubble.classList.contains('fake-photo-bubble')) {
         const row = bubble.closest('.msg-row');
@@ -1326,6 +1553,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
         const msgObj = history[idx];
         
         let rawText = msgObj.content;
+        // 如果包含引用块，剥离出来
         if (rawText.includes('class="quote-block"')) {
             rawText = rawText.replace(/<div class="quote-block">.*?<\/div>/, '');
         }
@@ -1336,6 +1564,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     }
   });
 
+  // 保存编辑后的消息
   document.getElementById('btn-save-edit-msg')?.addEventListener('click', () => {
       const idx = window.currentEditIndex;
       if (idx < 0) return;
@@ -1343,6 +1572,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       const history = settings.chatHistory[currentChatId];
       
       let finalContent = newText;
+      // 恢复引用块（如果有）
       if (history[idx].content.includes('class="quote-block"')) {
           const quoteMatch = history[idx].content.match(/(<div class="quote-block">.*?<\/div>)/);
           if (quoteMatch) {
@@ -1484,7 +1714,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
   }
   function exitMultiSelectMode() {
       document.getElementById('chat-messages').classList.remove('multi-select-mode');
-      window.updateBlockUI();
+      updateBlockUI(); // 恢复原本的底部栏状态
       document.getElementById('chat-multi-action-bar').classList.add('hidden');
       document.querySelectorAll('.msg-cb').forEach(cb => cb.checked = false);
   }
@@ -1592,6 +1822,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     }
   };
 
+  // ================== ⚙️ 聊天设置与详情重构逻辑 ==================
   window.tempCsProfileBg = null; 
   window.tempCsChatBg = null;
 
@@ -1737,6 +1968,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
     }
   });
 
+  // 🚨 拉黑管理逻辑
   window.showBlockManagerModal = function() {
       const c = settings.contacts.find(x => x.id === currentChatId);
       const myStatusEl = document.getElementById('bm-my-status');
@@ -1769,7 +2001,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       c.isBlockedByMe = !c.isBlockedByMe;
       saveSettings();
       showBlockManagerModal();
-      window.updateBlockUI();
+      updateBlockUI();
       window.showToast(c.isBlockedByMe ? '已将对方加入黑名单' : '已解除拉黑');
   };
 
@@ -1780,17 +2012,19 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
           c.isBlockedByAI = false;
           saveSettings();
           showBlockManagerModal();
-          window.updateBlockUI();
+          updateBlockUI();
           window.showToast('已强制解除');
       }
   };
 
+  // 🚨 动态更新底部输入框的拉黑 UI
   window.updateBlockUI = function() {
       const c = settings.contacts.find(x => x.id === currentChatId);
       const inputBar = document.getElementById('chat-input-bar');
       const normalRow = document.getElementById('chat-normal-input-row');
       const toolsRow = document.getElementById('chat-normal-tools-row');
       
+      // 移除之前可能添加的拉黑提示栏
       const oldBlockBar = document.getElementById('block-status-bar');
       if (oldBlockBar) oldBlockBar.remove();
 
@@ -1801,7 +2035,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
           bar.id = 'block-status-bar';
           bar.style.cssText = 'text-align:center; padding:12px; color:#ef4444; font-size:14px; font-weight:bold; cursor:pointer;';
           bar.textContent = '你已将对方拉黑，无法发送消息 (点击解除)';
-          bar.onclick = () => { c.isBlockedByMe = false; saveSettings(); window.updateBlockUI(); window.showToast('已解除拉黑'); };
+          bar.onclick = () => { c.isBlockedByMe = false; saveSettings(); updateBlockUI(); window.showToast('已解除拉黑'); };
           inputBar.appendChild(bar);
       } else if (c.isBlockedByAI) {
           normalRow.classList.add('hidden');
@@ -1818,6 +2052,7 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       }
   };
 
+  // 🚨 发送解除拉黑申请
   document.getElementById('btn-send-unblock-req')?.addEventListener('click', async () => {
       const reqMsg = document.getElementById('inp-unblock-req').value.trim() || '对不起，我错了，原谅我好不好？';
       document.getElementById('unblock-request-modal').classList.add('hidden');
@@ -1827,7 +2062,433 @@ ${c.worldbook ? (settings.worldbooks?.find(w => w.id === c.worldbook)?.content |
       settings.chatHistory[currentChatId].push({ role: 'system', content: `用户发送了解除拉黑申请："${reqMsg}"`, time: time });
       saveSettings(); scrollToBottom();
 
+      // 触发 AI 思考是否原谅
       chatGenBtn.click();
+  });
+
+  window.clearSpecificChat = function(includeMemory) {
+      const msg = includeMemory ? '确定清空聊天记录和所有记忆/心声吗？此操作不可逆！' : '确定仅清空聊天记录吗？';
+      if(confirm(msg)) {
+          settings.chatHistory[currentChatId] = [];
+          if(includeMemory) {
+              const c = settings.contacts.find(x => x.id === currentChatId);
+              c.innerVoices = [];
+          }
+          saveSettings(); renderChatHistory();
+          document.getElementById('chat-settings-modal').classList.add('hidden');
+          window.showToast('已清空');
+      }
+  };
+
+  window.deleteCurrentContact = function() {
+      if(confirm('确定永久删除该联系人及所有数据吗？')) {
+          settings.contacts = settings.contacts.filter(x => x.id !== currentChatId);
+          delete settings.chatHistory[currentChatId];
+          saveSettings(); 
+          document.getElementById('chat-settings-modal').classList.add('hidden');
+          document.querySelector('[data-back="chat"]').click(); 
+          renderChatList();
+          window.showToast('联系人已删除');
+      }
+  };
+
+  document.getElementById('btn-export-chat-json').addEventListener('click', () => {
+      const c = settings.contacts.find(x => x.id === currentChatId);
+      const history = settings.chatHistory[currentChatId] || [];
+      const exportData = { contact: c, history: history };
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+      const a = document.createElement('a'); a.href = dataStr; a.download = `${c.name}_chat_backup.json`;
+      document.body.appendChild(a); a.click(); a.remove(); window.showToast('导出成功！');
+  });
+
+  document.getElementById('inp-import-chat').addEventListener('change', (e) => {
+      const file = e.target.files[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+          try {
+              const data = JSON.parse(event.target.result);
+              if(data.history) {
+                  settings.chatHistory[currentChatId] = data.history;
+                  if(data.contact) {
+                      const idx = settings.contacts.findIndex(x => x.id === currentChatId);
+                      settings.contacts[idx] = { ...settings.contacts[idx], ...data.contact, id: currentChatId }; 
+                  }
+                  saveSettings(); renderChatHistory();
+                  document.getElementById('chat-settings-modal').classList.add('hidden');
+                  window.showToast('记录导入成功！');
+              } else {
+                  window.showToast('JSON 格式不包含 history 字段');
+              }
+          } catch(err) { window.showToast('JSON 格式错误！'); }
+      };
+      reader.readAsText(file);
+  });
+
+  // ================== 🚨 修复补充：缺失的弹窗和面板切换逻辑 ==================
+
+  window.showMusicModal = function() {
+    document.getElementById('inp-music-title').value = settings.music.title || '';
+    document.getElementById('inp-music-artist').value = settings.music.artist || '';
+    document.getElementById('inp-music-url').value = settings.music.audio && settings.music.audio.startsWith('http') ? settings.music.audio : '';
+    document.getElementById('music-modal').classList.remove('hidden');
+  };
+
+  let tempMusicCover = '';
+  let tempMusicAudio = '';
+  document.getElementById('inp-music-cover')?.addEventListener('change', e => {
+    fileToBase64Compressed(e.target.files[0], res => tempMusicCover = res);
+  });
+  document.getElementById('inp-music-file')?.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => tempMusicAudio = event.target.result;
+      reader.readAsDataURL(file);
+    }
+  });
+
+  document.getElementById('btn-save-music')?.addEventListener('click', () => {
+    settings.music.title = document.getElementById('inp-music-title').value || '未知歌曲';
+    settings.music.artist = document.getElementById('inp-music-artist').value || '未知歌手';
+    const url = document.getElementById('inp-music-url').value.trim();
+    
+    if (tempMusicCover) settings.music.cover = tempMusicCover;
+    if (url) {
+        settings.music.audio = url;
+    } else if (tempMusicAudio) {
+        settings.music.audio = tempMusicAudio;
+    }
+    
+    saveSettings();
+    applySettings(); 
+    document.getElementById('music-modal').classList.add('hidden');
+    window.showToast('音乐设置已保存');
+  });
+
+  window.toggleMusicPlay = function() {
+    const audio = document.getElementById('sys-audio-player');
+    const btn = document.getElementById('btn-play-pause');
+    const disc = document.getElementById('music-cover-disp');
+    if (!audio.src || audio.src === window.location.href) {
+      window.showToast('请先长按或点击设置音乐文件');
+      return;
+    }
+    if (audio.paused) {
+      audio.play();
+      btn.classList.add('playing');
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+      disc.classList.add('playing');
+    } else {
+      audio.pause();
+      btn.classList.remove('playing');
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+      disc.classList.remove('playing');
+    }
+  };
+
+  window.showAnniModal = function() {
+    document.getElementById('inp-anni-title').value = settings.widgetAnni.title || '';
+    document.getElementById('inp-anni-date').value = settings.widgetAnni.date || '';
+    document.getElementById('anni-modal').classList.remove('hidden');
+  };
+
+  document.getElementById('btn-save-anni')?.addEventListener('click', () => {
+    settings.widgetAnni.title = document.getElementById('inp-anni-title').value || '纪念日';
+    settings.widgetAnni.date = document.getElementById('inp-anni-date').value;
+    saveSettings();
+    applySettings();
+    document.getElementById('anni-modal').classList.add('hidden');
+    window.showToast('纪念日已保存');
+  });
+
+  window.toggleStickerPanel = function() {
+    const panel = document.getElementById('chat-sticker-panel');
+    const extra = document.getElementById('chat-extra-menu');
+    if (!panel.classList.contains('hidden')) {
+      panel.classList.add('hidden');
+    } else {
+      extra.classList.add('hidden');
+      renderStickerPanel(); 
+      panel.classList.remove('hidden');
+    }
+  };
+
+  window.toggleExtraMenu = function() {
+    const panel = document.getElementById('chat-sticker-panel');
+    const extra = document.getElementById('chat-extra-menu');
+    if (!extra.classList.contains('hidden')) {
+      extra.classList.add('hidden');
+    } else {
+      panel.classList.add('hidden');
+      extra.classList.remove('hidden');
+    }
+  };
+
+  window.showStickerManagerModal = function() {
+    document.getElementById('chat-sticker-panel').classList.add('hidden');
+    renderStickerManagerList();
+    document.getElementById('sticker-manager-modal').classList.remove('hidden');
+  };
+
+  document.getElementById('btn-add-sticker')?.addEventListener('click', () => {
+    const url = document.getElementById('inp-sticker-url').value.trim();
+    const group = document.getElementById('inp-sticker-group').value.trim() || '默认';
+    if (!url) return window.showToast('请输入图片URL');
+    settings.stickers.push({ group, url });
+    saveSettings();
+    document.getElementById('inp-sticker-url').value = '';
+    renderStickerManagerList();
+    window.showToast('表情包已添加');
+  });
+
+  function renderStickerManagerList() {
+    const list = document.getElementById('sticker-manager-list');
+    list.innerHTML = '';
+    settings.stickers.forEach((s, idx) => {
+      const img = document.createElement('img');
+      img.src = s.url;
+      img.style.cssText = 'width: 50px; height: 50px; object-fit: contain; background: #eee; border-radius: 8px; cursor: pointer;';
+      img.title = `点击删除 [${s.group}]`;
+      img.onclick = () => {
+        if(confirm(`确定删除该表情包吗？`)) {
+          settings.stickers.splice(idx, 1);
+          saveSettings();
+          renderStickerManagerList();
+        }
+      };
+      list.appendChild(img);
+    });
+  }
+
+  function renderStickerPanel() {
+    const tabs = document.getElementById('sticker-tabs');
+    const list = document.getElementById('sticker-list');
+    tabs.innerHTML = ''; list.innerHTML = '';
+    
+    const groups = [...new Set(settings.stickers.map(s => s.group))];
+    if (groups.length === 0) {
+      list.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#999;font-size:12px;padding:20px;">暂无表情包，请点击下方管理添加</div>';
+      return;
+    }
+    
+    let activeGroup = groups[0];
+    
+    const renderList = (groupName) => {
+      list.innerHTML = '';
+      settings.stickers.filter(s => s.group === groupName).forEach(s => {
+        const div = document.createElement('div');
+        div.className = 'sticker-item';
+        div.style.backgroundImage = `url('${s.url}')`;
+        div.onclick = () => {
+          const time = formatTime(new Date());
+          const html = `<img src="${s.url}" class="image-bubble" alt="表情包">`;
+          const c = settings.contacts.find(x => x.id === currentChatId);
+          appendMsgToUI('user', html, settings.chatHistory[currentChatId].length, time, c.timestamps !== false);
+          settings.chatHistory[currentChatId].push({ role: 'user', content: html, time: time });
+          updateContactLastMsg(currentChatId, '[表情包]', time);
+          saveSettings();
+          scrollToBottom();
+          document.getElementById('chat-sticker-panel').classList.add('hidden');
+        };
+        list.appendChild(div);
+      });
+    };
+
+    groups.forEach(g => {
+      const btn = document.createElement('button');
+      btn.className = `sticker-tab ${g === activeGroup ? 'active' : ''}`;
+      btn.textContent = g;
+      btn.onclick = () => {
+        document.querySelectorAll('.sticker-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderList(g);
+      };
+      tabs.appendChild(btn);
+    });
+    renderList(activeGroup);
+  }
+
+  window.showFakeVoiceModal = function() {
+    document.getElementById('chat-extra-menu').classList.add('hidden');
+    document.getElementById('inp-fake-voice').value = '';
+    document.getElementById('fake-voice-modal').classList.remove('hidden');
+  };
+
+  document.getElementById('btn-send-fake-voice')?.addEventListener('click', () => {
+    const text = document.getElementById('inp-fake-voice').value.trim() || '语音消息';
+    const duration = document.getElementById('inp-voice-duration').value || 3;
+    const vHtml = `<svg viewBox="0 0 24 24" class="voice-icon" fill="currentColor"><path d="M12 3v18m-4-14v10m8-10v10m-12-6v2m16-2v2"/></svg><span class="voice-duration">${duration}"</span><span class="voice-hidden-text" style="display:none;">${text}</span>`;
+    const time = formatTime(new Date());
+    const c = settings.contacts.find(x => x.id === currentChatId);
+    appendMsgToUI('user', vHtml, settings.chatHistory[currentChatId].length, time, c.timestamps !== false);
+    
+    settings.chatHistory[currentChatId].push({ role: 'user', content: vHtml, time: time });
+    updateContactLastMsg(currentChatId, '[语音]', time);
+    saveSettings(); scrollToBottom();
+    document.getElementById('fake-voice-modal').classList.add('hidden');
+  });
+
+  window.showFakePhotoModal = function() {
+    document.getElementById('chat-extra-menu').classList.add('hidden');
+    document.getElementById('inp-fake-photo').value = '';
+    document.getElementById('fake-photo-modal').classList.remove('hidden');
+  };
+
+  document.getElementById('btn-send-fake-photo')?.addEventListener('click', () => {
+    const desc = document.getElementById('inp-fake-photo').value.trim() || '一张照片';
+    const pHtml = `<svg class="fake-photo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg><span>[照片] ${desc}</span>`;
+    const time = formatTime(new Date());
+    const c = settings.contacts.find(x => x.id === currentChatId);
+    appendMsgToUI('user', pHtml, settings.chatHistory[currentChatId].length, time, c.timestamps !== false);
+    settings.chatHistory[currentChatId].push({ role: 'user', content: pHtml, time: time });
+    
+    updateContactLastMsg(currentChatId, '[图片]', time);
+    saveSettings(); scrollToBottom();
+    document.getElementById('fake-photo-modal').classList.add('hidden');
+  });
+
+  window.showTransferModal = function() {
+    document.getElementById('chat-extra-menu').classList.add('hidden');
+    document.getElementById('inp-transfer-amount').value = '';
+    document.getElementById('inp-transfer-note').value = '转账给你';
+    document.getElementById('transfer-modal').classList.remove('hidden');
+  };
+
+  window.createTransferCardHTML = function(amount, note, status = 'pending', role = 'user', time = '') {
+    let statusText = '请收款';
+    let opacity = '1';
+    if (status === 'received') { statusText = '已收款'; opacity = '0.7'; }
+    if (status === 'refunded') { statusText = '已退还'; opacity = '0.7'; }
+    return `<div class="transfer-card-new" data-status="${status}" data-amount="${amount}" data-role="${role}" style="opacity: ${opacity};"><div class="transfer-card-top"><div class="transfer-icon-area"><div class="transfer-icon-circle">¥</div></div><div class="transfer-content"><div class="transfer-amount">¥${amount}</div><div class="transfer-note">${note}</div></div></div><div class="transfer-time">${statusText}</div></div>`;
+  };
+
+  document.getElementById('btn-send-transfer')?.addEventListener('click', () => {
+    const amt = document.getElementById('inp-transfer-amount').value;
+    const note = document.getElementById('inp-transfer-note').value || '转账给你';
+    if (!amt || isNaN(amt) || parseFloat(amt) <= 0) return window.showToast('请输入有效金额');
+    
+    const currentWallet = parseFloat(settings.wallet.val.replace(/[^\d.-]/g, '')) || 0;
+    if (currentWallet < parseFloat(amt)) return window.showToast('钱包余额不足！请先去"我"的页面充值');
+
+    updateWallet(-parseFloat(amt), `转账给 ${document.getElementById('chat-target-name').textContent}`);
+
+    const tHtml = window.createTransferCardHTML(amt, note, 'pending', 'user', formatTime(new Date()));
+    const time = formatTime(new Date());
+    const c = settings.contacts.find(x => x.id === currentChatId);
+    
+    appendMsgToUI('user', tHtml, settings.chatHistory[currentChatId].length, time, c.timestamps !== false);
+    settings.chatHistory[currentChatId].push({ role: 'user', content: tHtml, time: time });
+    
+    updateContactLastMsg(currentChatId, '[转账]', time);
+    saveSettings(); scrollToBottom();
+    document.getElementById('transfer-modal').classList.add('hidden');
+  });
+
+  window.currentTransferIndex = -1;
+  window.currentTransferAmt = 0;
+
+  document.getElementById('btn-confirm-transfer')?.addEventListener('click', () => processUserTransferAction('received'));
+  document.getElementById('btn-refund-transfer')?.addEventListener('click', () => processUserTransferAction('refunded'));
+
+  function processUserTransferAction(action) {
+      const idx = window.currentTransferIndex;
+      if (idx < 0) return;
+      const history = settings.chatHistory[currentChatId];
+      const c = settings.contacts.find(x => x.id === currentChatId);
+      
+      let oldContent = history[idx].content;
+      oldContent = oldContent.replace('data-status="pending"', `data-status="${action}"`);
+      history[idx].content = oldContent;
+
+      if (action === 'received') {
+          updateWallet(window.currentTransferAmt, `收到 ${c.remark || c.name} 的转账`);
+      }
+
+      const sysText = action === 'received' ? `你已收款` : `你退还了转账`;
+      history.push({ role: 'system', content: sysText, time: formatTime(new Date()) });
+      
+      saveSettings();
+      renderChatHistory();
+      document.getElementById('receive-transfer-modal').classList.add('hidden');
+  }
+
+  let isIvMultiSelect = false;
+  document.getElementById('iv-multi-select-btn')?.addEventListener('click', function() {
+      isIvMultiSelect = !isIvMultiSelect;
+      this.textContent = isIvMultiSelect ? '取消' : '多选';
+      window.renderInnerVoiceList();
+  });
+
+  document.getElementById('iv-select-all')?.addEventListener('change', (e) => {
+      document.querySelectorAll('.iv-cb').forEach(cb => cb.checked = e.target.checked);
+  });
+
+  document.getElementById('iv-delete-selected')?.addEventListener('click', () => {
+      const checked = Array.from(document.querySelectorAll('.iv-cb:checked')).map(cb => parseInt(cb.value)).sort((a,b) => b-a);
+      if(checked.length === 0) return window.showToast('未选择任何项');
+      if(confirm(`确定删除选中的 ${checked.length} 条心声吗？`)) {
+          const c = settings.contacts.find(x => x.id === currentChatId);
+          checked.forEach(origIdx => c.innerVoices.splice(origIdx, 1));
+          saveSettings(); window.renderInnerVoiceList(); window.showToast('已删除');
+      }
+  });
+
+  window.renderInnerVoiceList = function() {
+    const list = document.getElementById('iv-list');
+    list.innerHTML = '';
+    document.getElementById('iv-multi-action-bar').classList.toggle('hidden', !isIvMultiSelect);
+    
+    const c = settings.contacts.find(x => x.id === currentChatId);
+    if (!c.innerVoices || c.innerVoices.length === 0) {
+      list.innerHTML = '<div style="text-align:center; color:#999; padding: 40px 0;">暂无心声记录，点击右上角生成</div>';
+      return;
+    }
+    
+    [...c.innerVoices].reverse().forEach((iv, reverseIdx) => {
+      const origIdx = c.innerVoices.length - 1 - reverseIdx;
+      const card = document.createElement('div');
+      card.className = 'iv-card';
+      
+      let cbHtml = isIvMultiSelect ? `<div class="iv-checkbox-wrap"><input type="checkbox" class="ios-checkbox iv-cb" value="${origIdx}"></div>` : '';
+      
+      card.innerHTML = `
+        ${cbHtml}
+        <div class="iv-card-header">
+          <span class="iv-time">${iv.time}</span>
+          <span class="iv-mood">${iv.mood || '平静'}</span>
+        </div>
+        <div class="iv-section">
+          <span class="iv-label">当前的动作</span>
+          <span class="iv-text">${iv.fact}</span>
+        </div>
+        <div class="iv-section">
+          <span class="iv-label">内心独白</span>
+          <span class="iv-text">"${iv.thought}"</span>
+        </div>
+      `;
+      
+      if (isIvMultiSelect) {
+          card.onclick = (e) => {
+              if (e.target.tagName !== 'INPUT') {
+                  const cb = card.querySelector('.iv-cb');
+                  if (cb) cb.checked = !cb.checked;
+              }
+          };
+      }
+      list.appendChild(card);
+    });
+  };
+
+  document.getElementById('btn-inner-voice')?.addEventListener('click', () => {
+    isIvMultiSelect = false;
+    const btn = document.getElementById('iv-multi-select-btn');
+    if(btn) btn.textContent = '多选';
+    window.renderInnerVoiceList();
+    document.getElementById('inner-voice-modal').classList.remove('hidden');
+  });
+
+  document.getElementById('iv-close')?.addEventListener('click', () => {
+    document.getElementById('inner-voice-modal').classList.add('hidden');
   });
 
   document.getElementById('iv-regen')?.addEventListener('click', async () => {
@@ -1881,25 +2542,6 @@ ${recentHistory}`;
     } finally {
       btn.textContent = '生成心声'; btn.style.opacity = '1';
     }
-  });
-
-  document.getElementById('btn-reject-ai-unblock')?.addEventListener('click', () => {
-      document.getElementById('ai-unblock-request-modal').classList.add('hidden');
-      window.showToast('已拒绝对方的请求');
-  });
-
-  document.getElementById('btn-accept-ai-unblock')?.addEventListener('click', () => {
-      const c = settings.contacts.find(x => x.id === currentChatId);
-      c.isBlockedByMe = false;
-      saveSettings();
-      document.getElementById('ai-unblock-request-modal').classList.add('hidden');
-      window.updateBlockUI();
-      window.showToast('已原谅对方，解除拉黑');
-      
-      const time = formatTime(new Date());
-      appendMsgToUI('system', `[系统提示] 你已同意 "${c.remark || c.name}" 的解除拉黑申请`, settings.chatHistory[currentChatId].length, time, true);
-      settings.chatHistory[currentChatId].push({ role: 'system', content: `用户已同意你的解除拉黑申请，你们可以正常聊天了。`, time: time });
-      saveSettings(); scrollToBottom();
   });
 
   console.log('✅ 系统初始化完成！');
