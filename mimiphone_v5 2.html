@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>小手机</title>
+<style>
+  :root {
+    --bg: #f5f5f7;
+    --text: #1c1c1e;
+    --glass-bg: rgba(255,255,255,0.15);
+    --glass-border: rgba(255,255,255,0.28);
+    --shadow: 0 1px 2px rgba(0,0,0,0.05);
+    --card-bg: rgba(255,255,255,0.18);
+    --subtle: rgba(0,0,0,0.06);
+    --text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1e;
+      --text: #f5f5f7;
+      --glass-bg: rgba(0,0,0,0.25);
+      --glass-border: rgba(255,255,255,0.12);
+      --shadow: 0 1px 2px rgba(0,0,0,0.2);
+      --card-bg: rgba(255,255,255,0.08);
+      --subtle: rgba(255,255,255,0.06);
+      --text-shadow: 0 1px 2px rgba(255,255,255,0.1);
+    }
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:var(--bg);color:var(--text);
+    overflow:hidden;width:100vw;height:100vh;height:100dvh;
+    user-select:none;-webkit-user-select:none;
+  }
+  .glass{background:var(--glass-bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--glass-border);}
+  .glass-card{background:var(--card-bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--glass-border);box-shadow:var(--shadow);}
+  .active-scale{transition:transform 0.1s ease;}
+  .active-scale:active{transform:scale(0.95);}
+
+  /* Loading */
+  #loading-screen{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0;background:var(--bg);}
+  /* Heart-trace overlay container */
+  .loading-heart-container{position:relative;display:inline-flex;align-items:center;justify-content:center;width:220px;height:140px;}
+  .loader-text{position:relative;z-index:1;font-size:24px;font-weight:500;color:var(--text);letter-spacing:1px;margin-top:18px;}
+  /* Heart SVG sits behind text, centered */
+  .heart-trace-svg{position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;pointer-events:none;}
+  @keyframes heart-trace{
+    0%   { stroke-dashoffset: 1060; }
+    100% { stroke-dashoffset: 0; }
+  }
+  .heart-trace-path{
+    stroke-dasharray:1060;
+    stroke-dashoffset:1060;
+    animation:heart-trace 3s ease-in-out forwards;
+    animation-iteration-count:1;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* Loading fade */
+  #loading-screen{transition:opacity .3s ease;}
+  #loading-screen.fade-out{opacity:0;}
+
+  /* Lock Screen */
+  #lock-screen{
+    position:fixed;inset:0;z-index:8000;display:none;
+    flex-direction:column;align-items:center;justify-content:center;
+    background:var(--bg);
+    background-size:cover;background-position:center;
+    padding-top:env(safe-area-inset-top,0);padding-bottom:env(safe-area-inset-bottom,0);
+    opacity:0;transition:opacity .3s ease;
+  }
+  #lock-screen.visible{opacity:1;}
+
+  /* Main screen fade+slide */
+  #main-screen{transition:opacity .4s ease,transform .4s ease;}
+  #main-screen.entering{opacity:0;transform:translateY(20px);}
+
+  /* Lock body = 85% height, flex column */
+  #lock-body{
+    width:100%;flex:1;display:flex;align-items:center;justify-content:center;
+    padding:0 10%;
+  }
+  /* Left + divider + right row */
+  #lock-main-row{
+    display:flex;flex-direction:row;align-items:center;
+    width:100%;max-width:800px;gap:0;
+  }
+  /* Left: time */
+  #lock-left{
+    flex:0 0 60%;display:flex;align-items:center;justify-content:center;
+    gap:0;
+  }
+  #lock-hour,#lock-min{
+    font-family:'Times New Roman',Georgia,'Noto Serif',serif;
+    font-size:clamp(80px,22vw,200px);
+    font-weight:500;color:var(--text);line-height:1;
+    font-variant-numeric:tabular-nums;
+  }
+  #lock-colon{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:clamp(14px,3vw,27px);
+    padding:0 clamp(10px,2vw,36px);
+    margin-bottom:3px;
+  }
+  .lock-dot{
+    width:clamp(6px,1.2vw,18px);height:clamp(6px,1.2vw,18px);
+    border-radius:50%;background:#333;
+    flex-shrink:0;
+  }
+  @media (prefers-color-scheme:dark){.lock-dot{background:#ccc;}}
+  /* Divider */
+  #lock-divider{
+    width:1px;background:#D1D1D6;
+    height:clamp(64px,16vw,160px);
+    flex-shrink:0;
+    margin:0 clamp(16px,3vw,40px);
+  }
+  @media (prefers-color-scheme:dark){#lock-divider{background:rgba(255,255,255,0.2);}}
+  /* Right: info */
+  #lock-right{
+    flex:0 0 30%;display:flex;flex-direction:column;justify-content:center;
+    gap:clamp(12px,2.5vw,24px);
+    font-family:'Helvetica Neue',Arial,'PingFang SC',sans-serif;
+  }
+  #lock-info-row1{display:flex;align-items:center;gap:clamp(8px,1.5vw,16px);flex-wrap:nowrap;}
+  #lock-info-name{
+    font-size:clamp(16px,3.5vw,40px);font-weight:500;
+    letter-spacing:2px;text-transform:uppercase;
+    color:var(--text);white-space:nowrap;
+  }
+  #lock-info-avatar{
+    width:clamp(28px,4vw,48px);height:clamp(28px,4vw,48px);
+    border-radius:50%;background:var(--subtle);
+    border:1px solid rgba(150,150,150,0.3);
+    overflow:hidden;flex-shrink:0;cursor:pointer;
+  }
+  #lock-info-avatar img{width:100%;height:100%;object-fit:cover;}
+  .lock-info-line{
+    font-size:clamp(12px,2.2vw,32px);font-weight:400;
+    color:#8E8E93;white-space:nowrap;
+  }
+  /* Bottom location area */
+  #lock-location{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    padding-bottom:calc(env(safe-area-inset-bottom,0) + 100px);
+    font-family:'Helvetica Neue',Arial,'PingFang SC',sans-serif;
+    font-size:clamp(12px,2.2vw,32px);font-weight:400;color:#8E8E93;
+  }
+  #lock-location svg{flex-shrink:0;color:#8E8E93;}
+  .unlock-track{position:absolute;bottom:calc(40px + env(safe-area-inset-bottom,0));width:260px;height:48px;border-radius:24px;display:flex;align-items:center;padding:3px;overflow:hidden;}
+  .unlock-text{position:absolute;width:100%;text-align:center;font-size:13px;opacity:.4;pointer-events:none;letter-spacing:1px;}
+  .unlock-thumb{position:relative;z-index:2;width:42px;height:42px;min-width:42px;border-radius:21px;display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none;background:rgba(100,100,100,0.8);}
+  @media (prefers-color-scheme:dark){.unlock-thumb{background:rgba(80,80,80,0.9);}}
+
+  #main-screen{display:none;width:100vw;height:100vh;height:100dvh;position:relative;overflow:hidden;background-size:cover;background-position:center;transition:opacity .4s ease,transform .4s ease;}
+  #main-screen.entering{opacity:0;transform:translateY(20px);}
+
+  /* Pages */
+  .pages-container{width:100vw;height:100%;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;display:flex;scrollbar-width:none;}
+  .pages-container::-webkit-scrollbar{display:none;}
+  .page{min-width:100vw;width:100vw;height:100%;scroll-snap-align:start;overflow-y:auto;overflow-x:hidden;padding-top:calc(16px + env(safe-area-inset-top,0));padding-bottom:calc(140px + env(safe-area-inset-bottom,0));padding-left:16px;padding-right:16px;scrollbar-width:none;}
+  .page::-webkit-scrollbar{display:none;}
+
+  /* FIXED bottom controls overlay */
+  .fixed-bottom{
+    position:fixed;left:0;right:0;z-index:450;
+    bottom:calc(88px + env(safe-area-inset-bottom,0));
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+    pointer-events:none;
+  }
+  .fixed-bottom>*{pointer-events:auto;}
+
+  /* Dock */
+  .dock{position:fixed;bottom:0;left:0;right:0;z-index:500;margin:0 12px;margin-bottom:calc(8px + env(safe-area-inset-bottom,0));border-radius:24px;padding:10px 16px;display:flex;align-items:center;justify-content:space-around;}
+
+  /* App Icons */
+  .app-icon-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;}
+  .app-icon-wrap:active .app-icon-box{transform:scale(.9);}
+  .app-icon-box{width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;transition:transform .15s ease;}
+  .app-icon-label{font-size:11px;opacity:.6;font-weight:400;}
+
+  /* Page dots with pill animation */
+  .page-dots{display:flex;gap:6px;align-items:center;justify-content:center;}
+  .page-dot{
+    height:6px;border-radius:3px;background:var(--text);
+    transition:width .4s cubic-bezier(.4,0,.2,1),opacity .4s ease;
+  }
+  .page-dot.active{width:20px;opacity:.9;}
+  .page-dot:not(.active){width:6px;opacity:.2;}
+
+  /* Mini Search */
+  .mini-search{width:120px;height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;opacity:.5;cursor:pointer;}
+
+  /* Chat Bubbles with iMessage tails */
+  .chat-row{display:flex;align-items:flex-end;gap:6px;margin-bottom:8px;}
+  .chat-row.right{flex-direction:row-reverse;}
+  .chat-avatar-sm{width:36px;height:36px;min-width:36px;border-radius:18px;display:flex;align-items:center;justify-content:center;background:var(--subtle);overflow:hidden;cursor:pointer;position:relative;flex-shrink:0;}
+  .chat-avatar-sm img{width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;}
+  .bubble-wrap{position:relative;max-width:70%;}
+  .chat-bubble{padding:6px 12px;border-radius:20px;font-size:12px;line-height:1.5;position:relative;cursor:pointer;transition:opacity .15s;}
+  .chat-bubble:hover{opacity:.85;}
+  /* Left tail */
+  .chat-row:not(.right) .chat-bubble{border-bottom-left-radius:4px;}
+  .chat-row:not(.right) .bubble-wrap::after{
+    content:'';position:absolute;bottom:0;left:-5px;
+    width:0;height:0;
+    border-style:solid;
+    border-width:0 6px 10px 0;
+    border-color:transparent var(--card-bg) transparent transparent;
+  }
+  /* Right tail */
+  .chat-row.right .chat-bubble{border-bottom-right-radius:4px;}
+  .chat-row.right .bubble-wrap::after{
+    content:'';position:absolute;bottom:0;right:-5px;
+    width:0;height:0;
+    border-style:solid;
+    border-width:0 0 10px 6px;
+    border-color:transparent transparent transparent var(--card-bg);
+  }
+
+  /* Big Time Block */
+  .time-block{margin-top:14px;display:flex;flex-direction:column;align-items:center;}
+  .time-big{font-size:54px;font-weight:700;letter-spacing:-3px;line-height:1;font-variant-numeric:tabular-nums;}
+  .time-sub{display:flex;align-items:center;gap:6px;margin-top:6px;opacity:.5;font-size:13px;}
+
+  /* Anniversary */
+  .anni-card{border-radius:22px;overflow:hidden;transition:transform .2s ease;}
+  .anni-card:hover{transform:scale(1.015);}
+  .anni-img{height:96px;background:linear-gradient(135deg,var(--subtle) 0%,transparent 100%);position:relative;display:flex;align-items:flex-start;padding:12px;overflow:hidden;}
+  .anni-info{padding:16px 20px;display:flex;align-items:center;justify-content:space-between;}
+
+  /* Calendar — compact */
+  .cal-wrapper{border-radius:20px;padding:12px;}
+  .cal-toggle{display:flex;gap:2px;align-items:center;}
+  .cal-tab{font-size:9px;padding:3px 7px;border-radius:7px;cursor:pointer;transition:all .2s;opacity:.4;font-weight:500;}
+  .cal-tab.active{opacity:1;}
+  .cal-month-title{font-size:20px;font-weight:300;text-shadow:var(--text-shadow);letter-spacing:-.5px;line-height:1;}
+  .cal-day-title{font-size:20px;font-weight:300;text-shadow:var(--text-shadow);letter-spacing:-.5px;line-height:1;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;text-align:center;}
+  .cal-grid-head{font-size:8px;opacity:.4;padding:2px 0;font-weight:500;}
+  .cal-grid-cell{font-size:10px;opacity:.7;padding:3px 0;border-radius:5px;display:flex;flex-direction:column;align-items:center;gap:1px;}
+  .cal-grid-cell.today{opacity:1;font-weight:600;}
+  .cal-event-dot{width:2.5px;height:2.5px;border-radius:2px;background:var(--text);opacity:.35;}
+
+  /* Photo Frames */
+  .photo-frame{width:100px;height:100px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--subtle);overflow:hidden;cursor:pointer;transition:transform .1s;flex-shrink:0;}
+  .photo-frame:active{transform:scale(.95);}
+  .photo-frame img{width:100%;height:100%;object-fit:cover;}
+
+  /* App Overlay */
+  .app-overlay{position:fixed;inset:0;z-index:1000;display:none;opacity:0;transition:opacity .25s ease;}
+  .app-overlay.show{opacity:1;}
+  .app-overlay-inner{position:absolute;inset:0;background:var(--glass-bg);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);overflow-y:auto;padding:24px;padding-top:calc(24px + env(safe-area-inset-top,0));padding-bottom:calc(24px + env(safe-area-inset-bottom,0));}
+  .app-back{width:36px;height:36px;border-radius:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-bottom:20px;background:var(--subtle);transition:transform .1s;}
+  .app-back:active{transform:scale(.88);}
+  .app-title{font-size:26px;font-weight:600;margin-bottom:24px;letter-spacing:-.5px;}
+  .app-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:14px;margin-bottom:8px;}
+  .app-toggle{width:44px;height:26px;border-radius:13px;background:var(--subtle);position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;}
+  .app-toggle.on{background:var(--text);}
+  .app-toggle::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:10px;background:var(--bg);transition:transform .2s;}
+  .app-toggle.on::after{transform:translateX(18px);}
+  .editable{cursor:pointer;transition:opacity .2s;}
+  .editable:hover{opacity:.7;}
+  .grid-2x2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .icon-grid-4{display:flex;justify-content:space-around;align-items:flex-start;}
+  .dock .app-icon-box{width:52px;height:52px;border-radius:14px;}
+
+  /* ── Music Panel ── */
+  @keyframes disc-rotate{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+  /* Wrap is the anchor; button sits in normal flow; panel is absolute */
+  .music-panel-wrap{
+    position:relative;display:flex;flex-direction:column;align-items:center;
+    margin-top:6px;
+    /* Reserve space only for the button so page height stays fixed */
+    height:36px;
+  }
+  .music-note-btn{
+    width:36px;height:36px;border-radius:50%;
+    background:var(--glass-bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+    border:1px solid var(--glass-border);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;transition:transform .1s ease;flex-shrink:0;
+    color:var(--text);
+  }
+  .music-note-btn:active{transform:scale(0.95);}
+  /* Panel floats absolutely — does NOT push content below */
+  .music-panel{
+    display:none;
+    position:absolute;top:calc(100% + 4px);left:0;right:0;
+    z-index:300;
+    background:var(--glass-bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+    border:1px solid var(--glass-border);border-radius:20px;
+    padding:10px 12px;
+    transform-origin:top center;
+    opacity:0;transform:scaleY(0.92) translateY(-4px);
+    transition:opacity .2s ease,transform .2s ease;
+  }
+  .music-panel.open{display:block;}
+  .music-panel.open.animated{opacity:1;transform:scaleY(1) translateY(0);}
+  .music-disc{
+    width:48px;height:48px;border-radius:50%;
+    background:linear-gradient(135deg,rgba(200,200,200,0.35),rgba(130,130,130,0.25));
+    display:flex;align-items:center;justify-content:center;
+    overflow:hidden;cursor:pointer;flex-shrink:0;position:relative;
+  }
+  .music-disc.spinning{animation:disc-rotate 10s linear infinite;}
+  .music-disc img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:50%;}
+  .music-title{font-size:14px;font-weight:600;color:var(--text);text-align:left;}
+  .music-lyrics{font-size:12px;font-weight:400;color:var(--text);opacity:.7;text-align:left;margin-top:4px;}
+  .music-progress{width:100%;height:4px;border-radius:2px;background:var(--subtle);margin-top:6px;}
+  .music-progress-fill{width:35%;height:100%;border-radius:2px;background:var(--text);opacity:.55;}
+  .music-controls{
+    display:flex;justify-content:space-around;align-items:center;
+    background:var(--card-bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+    border:1px solid var(--glass-border);border-radius:12px;padding:6px 10px;margin-top:7px;
+  }
+  .music-ctrl-btn{cursor:pointer;transition:transform .1s;display:flex;align-items:center;justify-content:center;color:var(--text);}
+  .music-ctrl-btn:active{transform:scale(0.88);}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading-screen">
+  <div class="loading-heart-container">
+    <!--
+      viewBox 0 0 220 140, heart centered at (110, 78).
+      Bottom tip: (110,118). Lobe tops: (75,28) and (145,28). Dip: (110,52).
+      Lead-in from x=-400,y=118 → heart → exit to x=620,y=118.
+      Total estimated path length ~1060 units.
+    -->
+    <svg class="heart-trace-svg" viewBox="0 0 220 140">
+      <path class="heart-trace-path"
+        d="M -400,118 L 72,118
+           C 72,118 44,96 44,68
+           C 44,36 60,22 78,34
+           C 89,42 96,56 100,68
+           C 104,56 111,42 122,34
+           C 140,22 156,36 156,68
+           C 156,96 128,118 128,118
+           L 620,118"
+        fill="none" stroke="#8E8E93" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span class="loader-text">loading...</span>
+  </div>
+</div>
+
+<!-- LOCK SCREEN -->
+<div id="lock-screen">
+  <!-- Body: left time + divider + right info -->
+  <div id="lock-body" style="align-items:flex-start;padding-top:calc(env(safe-area-inset-top,0) + 8px);">
+    <div style="width:100%;max-width:800px;display:flex;flex-direction:column;align-items:center;transform:translateY(5px);">
+      <!-- Date row above time module -->
+      <div id="lock-date-full" style="font-size:16px;color:#8E8E93;text-align:center;margin-bottom:8px;font-family:'Helvetica Neue',Arial,'PingFang SC',sans-serif;letter-spacing:.5px;"></div>
+      <div id="lock-main-row">
+        <!-- Left: big time -->
+        <div id="lock-left">
+          <span id="lock-hour">--</span>
+          <div id="lock-colon">
+            <div class="lock-dot"></div>
+            <div class="lock-dot"></div>
+          </div>
+          <span id="lock-min">--</span>
+        </div>
+        <!-- Divider -->
+        <div id="lock-divider"></div>
+        <!-- Right: info rows (no avatar) -->
+        <div id="lock-right">
+          <div id="lock-info-row1">
+            <span id="lock-info-name">TIME</span>
+            <span style="font-size:clamp(22px,4.5vw,52px);color:var(--text);margin-left:4px;opacity:.7;line-height:1;align-self:center;">♥</span>
+            <input type="file" id="lock-av-input" accept="image/*" style="display:none;">
+          </div>
+          <div class="lock-info-line" id="lock-info-date">Mar 31</div>
+          <div class="lock-info-line" id="lock-info-weather">晴 18°C</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Bottom location -->
+  <div id="lock-location">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+      <circle cx="12" cy="9" r="2.5"/>
+    </svg>
+    <span id="lock-info-city">广州</span>
+  </div>
+  <!-- Unlock slider -->
+  <div class="unlock-track glass" id="unlock-track">
+    <span class="unlock-text">滑动以解锁</span>
+    <div class="unlock-thumb glass" id="unlock-thumb" style="background:rgba(100,100,100,0.8);">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN SCREEN -->
+<div id="main-screen">
+  <div class="pages-container" id="pages-container">
+    <!-- PAGE 1 -->
+    <div class="page" id="page1">
+      <!-- User Info -->
+      <div style="display:flex;flex-direction:column;align-items:center;padding-top:2px;padding-bottom:2px;">
+        <!-- Complex Avatar Component -->
+        <div id="avatar-root" style="position:relative;width:120px;height:120px;display:flex;align-items:center;justify-content:center;">
+          <!-- 1. Outer decorative ring -->
+          <div style="position:absolute;width:calc(100% - 4px);height:calc(100% - 4px);top:2px;left:2px;border-radius:50%;border:3px solid rgba(200,200,200,0.6);z-index:1;pointer-events:none;"></div>
+          <!-- 2. Avatar main body -->
+          <div id="avatar-wrap" style="position:absolute;width:107px;height:107px;border-radius:54px;overflow:hidden;cursor:pointer;z-index:2;" class="glass-card">
+            <div id="avatar-placeholder" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,rgba(200,200,200,.4),rgba(160,160,160,.3));">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity=".4"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+            </div>
+            <img id="avatar-img" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;display:none;">
+            <input type="file" id="avatar-input" accept="image/*" style="display:none;">
+          </div>
+          <!-- 3. Sticker layer (reserved, not implemented) -->
+          <!-- 4. Plus/edit button bottom-right -->
+          <div id="avatar-plus-btn" style="position:absolute;bottom:0;right:0;width:30px;height:30px;border-radius:15px;background:#e5e5e7;border:2px solid #fff;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:4;box-shadow:0 2px 6px rgba(0,0,0,0.15);" onclick="document.getElementById('avatar-input').click()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1c1c1e" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14m-7-7h14"/></svg>
+          </div>
+        </div>
+        <div id="username" class="editable" style="font-size:17px;font-weight:500;margin-top:10px;color:var(--text);">用户名</div>
+        <div id="user-bio" class="editable" style="font-size:12px;opacity:.5;margin-top:3px;color:var(--text);">点击编辑签名</div>
+      </div>
+
+      <!-- BIG TIME BLOCK -->
+      <div class="time-block">
+        <div class="time-big" id="home-time">14:52</div>
+        <div class="time-sub">
+          <span id="home-date">3月30日 星期一</span>
+          <span style="opacity:.35;">·</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"/></svg>
+          <span>晴 24°C</span>
+        </div>
+      </div>
+
+      <!-- App Icons -->
+      <div class="icon-grid-4" style="margin-top:24px;">
+        <div class="app-icon-wrap" onclick="openApp('settings')">
+          <div class="app-icon-box glass-card"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1.08 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001.08 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c.26.6.77 1.02 1.51 1.08H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1.08z"/></svg></div>
+          <span class="app-icon-label">设置</span>
+        </div>
+        <div class="app-icon-wrap" onclick="openApp('worldbook')">
+          <div class="app-icon-box glass-card"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15.3 15.3 0 014 9 15.3 15.3 0 01-4 9 15.3 15.3 0 01-4-9 15.3 15.3 0 014-9z"/></svg></div>
+          <span class="app-icon-label">世界书</span>
+        </div>
+        <div class="app-icon-wrap" onclick="openApp('memory')">
+          <div class="app-icon-box glass-card"><svg width="26" height="26" viewBox="0 0 1024 1024" fill="none" stroke="currentColor" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"><path d="M366.848 691.2h-130.56a88.32 88.32 0 0 1-88.32-88.064V204.8a88.32 88.32 0 0 1 88.32-88.576h568.064A88.32 88.32 0 0 1 892.416 204.8v174.08"/><path d="M668.672 832a239.36 239.36 0 1 1 0-478.72 239.36 239.36 0 0 1 0 478.72z"/><path d="M668.672 506.368v112.64"/><path d="M735.648 618.144l-66.976 66.976"/><path d="M364.8 780.8H243.2"/></svg></div>
+          <span class="app-icon-label">记忆</span>
+        </div>
+        <div class="app-icon-wrap" onclick="openApp('chat')">
+          <div class="app-icon-box glass-card"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+          <span class="app-icon-label">Chat</span>
+        </div>
+      </div>
+
+      <!-- Chat Messages — editable text, changeable avatars, iMessage tails -->
+      <div style="margin-top:24px;">
+        <div class="chat-row right">
+          <div class="chat-avatar-sm" id="chatAvR" onclick="changeChatAvatar('R')">
+            <svg class="chat-av-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/></svg>
+          </div>
+          <div class="bubble-wrap">
+            <div class="chat-bubble glass-card" id="bubbleR" onclick="editBubble('R')">Hey! 最近怎么样？</div>
+          </div>
+        </div>
+        <div class="chat-row">
+          <div class="chat-avatar-sm" id="chatAvL" onclick="changeChatAvatar('L')">
+            <svg class="chat-av-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/></svg>
+          </div>
+          <div class="bubble-wrap">
+            <div class="chat-bubble glass-card" id="bubbleL" onclick="editBubble('L')">一切都好！新项目很顺利。</div>
+          </div>
+        </div>
+      </div>
+      <!-- ── Music Panel ── -->
+      <div class="music-panel-wrap" id="music-wrap">
+        <button class="music-note-btn" id="music-toggle-btn" onclick="toggleMusicPanel()" aria-label="音乐">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18V5l12-2v13"/>
+            <circle cx="6" cy="18" r="3"/>
+            <circle cx="18" cy="16" r="3"/>
+          </svg>
+        </button>
+        <div class="music-panel" id="music-panel">
+          <!-- Row: disc left, info right -->
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="music-disc" id="music-disc" onclick="document.getElementById('music-disc-input').click()" title="点击更换封面">
+              <svg id="music-disc-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity=".35"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+              <img id="music-disc-img" style="display:none;" alt="disc">
+            </div>
+            <input type="file" id="music-disc-input" accept="image/*" style="display:none;">
+            <div style="flex:1;min-width:0;">
+              <div class="music-title">Lofi Study Beats</div>
+              <div class="music-lyrics">在星空下漫步</div>
+              <div class="music-progress"><div class="music-progress-fill"></div></div>
+            </div>
+          </div>
+          <!-- Controls -->
+          <div class="music-controls">
+            <!-- Repeat -->
+            <div class="music-ctrl-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg></div>
+            <!-- Prev -->
+            <div class="music-ctrl-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg></div>
+            <!-- Pause -->
+            <div class="music-ctrl-btn"><svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="3" width="4" height="14" rx="1.5"/><rect x="12" y="3" width="4" height="14" rx="1.5"/></svg></div>
+            <!-- Next -->
+            <div class="music-ctrl-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg></div>
+            <!-- Cast: monitor + signal waves -->
+            <div class="music-ctrl-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 20h8"/><path d="M12 18v2"/><path d="M2 10c3.3 0 6 2.7 6 6"/><path d="M2 6c5.5 0 10 4.5 10 10"/><path d="M2 14a2 2 0 012 2"/></svg></div>
+          </div>
+        </div>
+      </div>
+      <div style="height:10px;"></div>
+    </div>
+
+    <!-- PAGE 2 -->
+    <div class="page" id="page2">
+      <!-- Anniversary Card -->
+      <input type="file" id="anni-bg-input" accept="image/*" style="display:none;">
+      <div class="anni-card glass-card" style="margin-top:8px;">
+        <div class="anni-img" id="anni-img-area">
+          <svg width="48" height="48" viewBox="0 0 40 40" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 20h8l3-8 4 16 3-8h8"/>
+            <path d="M26 11c1.2-1.8 3.5-2.5 5.2-1.2s1.5 3.8 0 5.8L26 21l-5.2-5.4c-1.5-2-1.5-4.5 0-5.8s4-.6 5.2 1.2z" fill="#ffffff" opacity=".3"/>
+          </svg>
+          <!-- Bottom fade overlay for smooth transition -->
+          <div style="position:absolute;bottom:0;left:0;right:0;height:40px;background:linear-gradient(to bottom,transparent,var(--card-bg));pointer-events:none;border-radius:0;"></div>
+          <!-- Change background button -->
+          <div onclick="document.getElementById('anni-bg-input').click()" style="position:absolute;bottom:10px;right:10px;width:28px;height:28px;border-radius:14px;background:rgba(0,0,0,0.35);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:3;border:1px solid rgba(255,255,255,0.2);" title="更换背景图">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          </div>
+        </div>
+        <div class="anni-info">
+          <div>
+            <div style="font-size:17px;font-weight:500;">此处添加纪念日</div>
+            <div style="font-size:13px;opacity:.45;margin-top:4px;">2025年1月1日</div>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:2px;">
+            <span style="font-size:40px;font-weight:700;letter-spacing:-2px;line-height:1;" id="anni-days">0</span>
+            <span style="font-size:15px;font-weight:500;opacity:.6;">天</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Icons 2x2 + Calendar — aligned, compact, airy -->
+      <div style="display:flex;gap:8px;margin-top:16px;align-items:start;">
+        <div class="grid-2x2" style="flex-shrink:0;">
+          <div class="app-icon-wrap" onclick="openApp('forum')">
+            <div class="app-icon-box glass-card"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><path d="M8 10h8M8 14h4" opacity=".4"/></svg></div>
+            <span class="app-icon-label">论坛</span>
+          </div>
+          <div class="app-icon-wrap" onclick="openApp('game')">
+            <div class="app-icon-box glass-card"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="3"/><circle cx="8" cy="12" r="1.5" fill="currentColor" opacity=".3"/><path d="M15 10l1 1 1-1m-1 1v2"/></svg></div>
+            <span class="app-icon-label">游戏</span>
+          </div>
+          <div class="app-icon-wrap" onclick="openApp('beautify')">
+            <div class="app-icon-box glass-card"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18"/><circle cx="11" cy="11" r="2"/></svg></div>
+            <span class="app-icon-label">美化</span>
+          </div>
+          <div class="app-icon-wrap" onclick="openApp('shop')">
+            <div class="app-icon-box glass-card"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 01-8 0"/></svg></div>
+            <span class="app-icon-label">商城</span>
+          </div>
+        </div>
+
+        <!-- Calendar compact -->
+        <div class="cal-wrapper glass-card" style="flex:1;min-width:0;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <div class="cal-toggle">
+              <div class="cal-tab active glass" id="cal-weekly" onclick="switchCalTab('weekly')">Weekly</div>
+              <div class="cal-tab" id="cal-monthly" onclick="switchCalTab('monthly')">Monthly</div>
+            </div>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity=".3"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1.08 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001.08 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c.26.6.77 1.02 1.51 1.08H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1.08z"/></svg>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+            <div class="cal-month-title" id="cal-month-name"></div>
+            <div class="cal-day-title" id="cal-day-num"></div>
+          </div>
+          <div class="cal-grid" id="cal-grid"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+            <div style="display:flex;align-items:center;gap:3px;opacity:.3;font-size:8px;cursor:pointer;" class="active-scale">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 12l2 2 4-4"/></svg>
+              <span>Reminder</span>
+            </div>
+            <div class="glass active-scale" style="padding:3px 8px;border-radius:7px;display:flex;align-items:center;gap:3px;font-size:8px;cursor:pointer;">
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14m-7-7h14"/></svg>
+              <span>New</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Photo Frames -->
+      <div class="glass-card" style="padding:12px;border-radius:20px;margin-top:16px;display:flex;justify-content:space-around;">
+        <div class="photo-frame" id="photo0" onclick="uploadPhoto(0)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".35"><path d="M12 5v14m-7-7h14"/></svg></div>
+        <div class="photo-frame" id="photo1" onclick="uploadPhoto(1)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".35"><path d="M12 5v14m-7-7h14"/></svg></div>
+        <div class="photo-frame" id="photo2" onclick="uploadPhoto(2)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".35"><path d="M12 5v14m-7-7h14"/></svg></div>
+        <input type="file" id="photo-input" accept="image/*" style="display:none;">
+      </div>
+      <!-- Editable note below photo frames -->
+      <div id="photo-note-wrap" style="margin-top:9px;padding:8px 0;min-height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent;" onclick="editPhotoNote()">
+        <span id="photo-note-text" style="font-size:14px;opacity:.8;color:var(--text);text-align:center;">记录此刻的心情...</span>
+      </div>
+      <div style="height:16px;"></div>
+    </div>
+  </div>
+
+  <!-- FIXED bottom — search + dots (never scrolls) -->
+  <div class="fixed-bottom">
+    <div class="mini-search glass active-scale" onclick="openApp('search')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+      <span>搜索</span>
+    </div>
+    <div class="page-dots" id="page-dots">
+      <div class="page-dot active"></div>
+      <div class="page-dot"></div>
+    </div>
+  </div>
+
+  <!-- Dock -->
+  <div class="dock glass">
+    <div class="app-icon-wrap" onclick="openApp('view')">
+      <div class="app-icon-box glass-card"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg></div>
+    </div>
+    <div class="app-icon-wrap" onclick="openApp('pet')">
+      <div class="app-icon-box glass-card"><svg width="24" height="24" viewBox="0 0 1024 1024" fill="none" stroke="currentColor" stroke-width="55" stroke-linecap="round" stroke-linejoin="round"><path d="M919 381c-9.4-25.4-25.4-43.8-46.2-53.2-9.6-4.2-19.4-6.4-29.6-6.4-43.4 0-87.4 40.4-109.8 100.6-27.6 74.6-11.6 147.6 37.2 170 9.8 4.4 20.2 6.8 31.2 6.8 44.2 0 89.2-37 111.8-92.2 17-42 19-88.8 5.4-125.6zM290.6 422c-22.2-60.2-66.4-100.6-109.8-100.6-10.2 0-20.2 2.2-29.6 6.4-20.8 9.4-36.6 27.8-46.2 53.2-13.8 36.8-11.8 83.6 5.4 125.4 22.6 55.2 67.6 92.2 111.8 92.2 10.8 0 21.4-2.2 31.2-6.8 48.8-22.2 64.8-95.2 37.2-169.8z m96.4-8.4c4 0.2 8 0 12-0.4 23.4-2.2 44.6-14.2 61.2-34.6 26.8-33 34.2-84.4 28.6-137.4-8.6-81.6-51.6-142.6-109.6-145.2 0 0-8.2 0-12.4 0.4-25.6 2.6-48.8 15.8-67 38.4-26.6 32.8-39.4 81.4-34.2 130.2 8.6 80.8 61.8 146 121.4 148.6z m125 63.8c-138.6 0-277.4 164.8-277.4 323.2 0 47.2 23.6 85.2 47 100.8 28.8 19.2 49 26.8 91 26.8 50 0 63.6-17.6 87-33 17-11.2 31.6-20.8 52.4-20.8 20.8 0 35.4 9.6 52.4 20.8 23.4 15.4 37 33 87 33 42.2 0 62.4-7.6 91-26.8 23.2-15.6 47-53.6 47-100.8 0-158.4-138.8-323.2-277.4-323.2z m113.2-64.4c4 0.4 8 0.6 12 0.4 59.6-2.6 113-67.8 121.6-148.6 5.2-48.8-7.6-97.6-34.2-130.2-18.4-22.6-40.6-35.2-66.2-37.6-4.2-0.4-13.4-0.6-13.4-0.6-57.8 2.6-100.8 63-109.6 144.8-5.6 53 1.8 104.6 28.6 137.4 16.8 20 38 32 61.2 34.4z"/></svg></div>
+    </div>
+    <div class="app-icon-wrap" onclick="openApp('ao3')">
+      <div class="app-icon-box glass-card"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M8 7h8M8 11h5" opacity=".4"/></svg></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP OVERLAY -->
+<div class="app-overlay" id="app-overlay">
+  <div class="app-overlay-inner" id="app-content"></div>
+</div>
+
+<!-- Hidden inputs -->
+<input type="file" id="chatav-input" accept="image/*" style="display:none;">
+<input type="file" id="wp-lock-input" accept="image/*" style="display:none;">
+<input type="file" id="wp-main-input" accept="image/*" style="display:none;">
+
+<script>
+const ANNI_DATE='2025-01-01';
+const MONTHS_EN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAYS_CN=['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+let currentPhotoIdx=-1, currentChatAvSide='';
+
+function pad(n){return n<10?'0'+n:''+n;}
+function updateTimes(){
+  const now=new Date(), h=pad(now.getHours()), m=pad(now.getMinutes());
+  const lh=document.getElementById('lock-hour'),lm=document.getElementById('lock-min');
+  if(lh)lh.textContent=h; if(lm)lm.textContent=m;
+  const he=document.getElementById('home-time');if(he)he.textContent=h+':'+m;
+  const mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const ld=document.getElementById('lock-info-date');
+  if(ld)ld.textContent=mn[now.getMonth()]+' '+now.getDate();
+  const hd=document.getElementById('home-date');
+  if(hd) hd.textContent=(now.getMonth()+1)+'月'+now.getDate()+'日 '+DAYS_CN[now.getDay()];
+  // Full date row on lock screen
+  const ldf=document.getElementById('lock-date-full');
+  if(ldf){const yy=now.getFullYear(),mm=pad(now.getMonth()+1),dd=pad(now.getDate());ldf.textContent=yy+'年'+mm+'月'+dd+'日 · '+DAYS_CN[now.getDay()];}
+}
+function updateAnni(){
+  const t=new Date(ANNI_DATE),n=new Date();
+  document.getElementById('anni-days').textContent=Math.abs(Math.floor((n-t)/864e5));
+}
+
+// Boot
+window.addEventListener('DOMContentLoaded',()=>{
+  updateTimes(); setInterval(updateTimes,10000);
+  updateAnni(); loadUserData(); loadPhotos(); loadChatData(); buildCalendar();
+  loadWallpapers();
+  setTimeout(()=>{
+    const ls=document.getElementById('loading-screen');
+    ls.classList.add('fade-out');
+    setTimeout(()=>{
+      ls.style.display='none';
+      const lk=document.getElementById('lock-screen');
+      lk.style.display='flex';
+      requestAnimationFrame(()=>requestAnimationFrame(()=>lk.classList.add('visible')));
+    },300);
+  },2500);
+});
+
+// Lock slider
+(function(){
+  const track=document.getElementById('unlock-track'),thumb=document.getElementById('unlock-thumb');
+  let dragging=false,sx=0,tl=0;
+  const maxT=()=>track.offsetWidth-thumb.offsetWidth-6;
+  function start(e){dragging=true;sx=e.touches?e.touches[0].clientX:e.clientX;tl=0;e.preventDefault();}
+  function move(e){if(!dragging)return;const cx=e.touches?e.touches[0].clientX:e.clientX;let dx=Math.max(0,Math.min(cx-sx,maxT()));thumb.style.transform='translateX('+dx+'px)';tl=dx;e.preventDefault();}
+  function end(){
+    if(!dragging)return;dragging=false;
+    if(tl>=maxT()*.8){
+      const lk=document.getElementById('lock-screen');
+      const ms=document.getElementById('main-screen');
+      lk.classList.remove('visible');
+      ms.style.display='block';
+      ms.classList.add('entering');
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        ms.classList.remove('entering');
+      }));
+      setTimeout(()=>{lk.style.display='none';},400);
+    }else{
+      thumb.style.transition='transform .3s ease';
+      thumb.style.transform='translateX(0)';
+      setTimeout(()=>{thumb.style.transition='';},300);
+    }
+  }
+  thumb.addEventListener('mousedown',start);
+  thumb.addEventListener('touchstart',start,{passive:false});
+  document.addEventListener('mousemove',move);
+  document.addEventListener('touchmove',move,{passive:false});
+  document.addEventListener('mouseup',end);
+  document.addEventListener('touchend',end);
+})();
+
+// Scroll → fixed dots
+const pc=document.getElementById('pages-container');
+pc.addEventListener('scroll',()=>{
+  const idx=Math.round(pc.scrollLeft/pc.offsetWidth);
+  document.getElementById('page-dots').querySelectorAll('.page-dot').forEach((d,i)=>d.classList.toggle('active',i===idx));
+});
+
+// Calendar
+function buildCalendar(){
+  const now=new Date();
+  document.getElementById('cal-month-name').textContent=MONTHS_EN[now.getMonth()];
+  document.getElementById('cal-day-num').textContent=now.getDate();
+  const grid=document.getElementById('cal-grid'); grid.innerHTML='';
+  ['S','M','T','W','T','F','S'].forEach(h=>{const d=document.createElement('div');d.className='cal-grid-head';d.textContent=h;grid.appendChild(d);});
+  const dow=now.getDay(),start=new Date(now);start.setDate(now.getDate()-dow);
+  for(let i=0;i<7;i++){
+    const dt=new Date(start);dt.setDate(start.getDate()+i);
+    const cell=document.createElement('div');cell.className='cal-grid-cell';
+    if(dt.getDate()===now.getDate()&&dt.getMonth()===now.getMonth()){cell.classList.add('today');cell.style.background='var(--glass-bg)';cell.style.backdropFilter='blur(10px)';cell.style.webkitBackdropFilter='blur(10px)';}
+    const num=document.createElement('span');num.textContent=dt.getDate();cell.appendChild(num);
+    if(i===2||i===5){const dot=document.createElement('div');dot.className='cal-event-dot';cell.appendChild(dot);}
+    grid.appendChild(cell);
+  }
+}
+function switchCalTab(tab){
+  const w=document.getElementById('cal-weekly'),m=document.getElementById('cal-monthly');
+  if(tab==='weekly'){w.classList.add('active','glass');m.classList.remove('active','glass');}
+  else{m.classList.add('active','glass');w.classList.remove('active','glass');}
+}
+
+// ── Image compression utility ──
+function compressImage(file, maxW, quality, cb) {
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const img = new Image();
+    img.onload = function() {
+      const scale = Math.min(1, maxW / img.width);
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      // Keep PNG for transparency, otherwise JPEG
+      const isTransparentPng = file.type === 'image/png';
+      const dataUrl = isTransparentPng
+        ? canvas.toDataURL('image/png')
+        : canvas.toDataURL('image/jpeg', quality);
+      cb(dataUrl);
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// User data
+function loadUserData(){
+  const n=localStorage.getItem('xsj_name'),b=localStorage.getItem('xsj_bio'),a=localStorage.getItem('xsj_avatar');
+  if(n) document.getElementById('username').textContent=n;
+  if(b) document.getElementById('user-bio').textContent=b;
+  if(a){const img=document.getElementById('avatar-img');img.src=a;img.style.display='block';document.getElementById('avatar-placeholder').style.display='none';}
+  const pn=localStorage.getItem('xsj_photo_note');
+  if(pn){const el=document.getElementById('photo-note-text');el.textContent=pn;el.style.opacity='.8';}
+  const la=localStorage.getItem('xsj_lock_avatar');
+  if(la){const li=document.getElementById('lock-av-img');if(li){li.src=la;li.style.display='block';}}
+  // Load anni card background
+  const anniBg=localStorage.getItem('xsj_anni_bg');
+  if(anniBg) setAnniBg(anniBg);
+}
+document.getElementById('avatar-input').addEventListener('change',function(e){
+  const f=e.target.files[0];if(!f)return;
+  compressImage(f,200,0.75,function(d){
+    const img=document.getElementById('avatar-img');img.src=d;img.style.display='block';
+    document.getElementById('avatar-placeholder').style.display='none';
+    localStorage.setItem('xsj_avatar',d);
+  });
+  this.value='';
+});
+document.getElementById('lock-av-input').addEventListener('change',function(e){
+  const f=e.target.files[0];if(!f)return;
+  compressImage(f,200,0.75,function(d){
+    const li=document.getElementById('lock-av-img');if(li){li.src=d;li.style.display='block';}
+    localStorage.setItem('xsj_lock_avatar',d);
+  });
+  this.value='';
+});
+function loadWallpapers(){
+  const lw=localStorage.getItem('xsj_wp_lock'),mw=localStorage.getItem('xsj_wp_main');
+  if(lw) document.getElementById('lock-screen').style.backgroundImage='url('+lw+')';
+  if(mw) document.getElementById('main-screen').style.backgroundImage='url('+mw+')';
+}
+document.getElementById('wp-lock-input').addEventListener('change',function(e){
+  const f=e.target.files[0];if(!f)return;
+  compressImage(f,800,0.8,function(d){
+    document.getElementById('lock-screen').style.backgroundImage='url('+d+')';
+    localStorage.setItem('xsj_wp_lock',d);
+  });
+  this.value='';
+});
+document.getElementById('wp-main-input').addEventListener('change',function(e){
+  const f=e.target.files[0];if(!f)return;
+  compressImage(f,800,0.8,function(d){
+    document.getElementById('main-screen').style.backgroundImage='url('+d+')';
+    localStorage.setItem('xsj_wp_main',d);
+  });
+  this.value='';
+});
+function editPhotoNote(){
+  const el=document.getElementById('photo-note-text');
+  const cur=el.textContent==='记录此刻的心情...'?'':el.textContent;
+  const v=prompt('记录心情',cur);
+  if(v!==null){
+    if(v.trim()){el.textContent=v.trim();el.style.opacity='1';}
+    else{el.textContent='记录此刻的心情...';el.style.opacity='.55';}
+    localStorage.setItem('xsj_photo_note',v.trim());
+  }
+}
+document.getElementById('username').addEventListener('click',()=>{
+  const c=document.getElementById('username').textContent,v=prompt('编辑用户名',c);
+  if(v!==null&&v.trim()){document.getElementById('username').textContent=v.trim();localStorage.setItem('xsj_name',v.trim());}
+});
+document.getElementById('user-bio').addEventListener('click',()=>{
+  const c=document.getElementById('user-bio').textContent,v=prompt('编辑签名',c);
+  if(v!==null){document.getElementById('user-bio').textContent=v.trim()||'点击编辑签名';localStorage.setItem('xsj_bio',v.trim());}
+});
+
+// Chat bubbles + avatars
+function loadChatData(){
+  const br=localStorage.getItem('xsj_bubbleR'),bl=localStorage.getItem('xsj_bubbleL');
+  if(br) document.getElementById('bubbleR').textContent=br;
+  if(bl) document.getElementById('bubbleL').textContent=bl;
+  const ar=localStorage.getItem('xsj_chatAvR'),al=localStorage.getItem('xsj_chatAvL');
+  if(ar) setChatAvImg('R',ar);
+  if(al) setChatAvImg('L',al);
+}
+function editBubble(side){
+  const el=document.getElementById('bubble'+side),v=prompt('编辑消息',el.textContent);
+  if(v!==null&&v.trim()){el.textContent=v.trim();localStorage.setItem('xsj_bubble'+side,v.trim());}
+}
+function changeChatAvatar(side){currentChatAvSide=side;document.getElementById('chatav-input').click();}
+document.getElementById('chatav-input').addEventListener('change',function(e){
+  const f=e.target.files[0];if(!f||!currentChatAvSide)return;
+  compressImage(f,200,0.75,function(d){setChatAvImg(currentChatAvSide,d);localStorage.setItem('xsj_chatAv'+currentChatAvSide,d);});
+  this.value='';
+});
+function setChatAvImg(side,src){
+  const el=document.getElementById('chatAv'+side);
+  const svg=el.querySelector('.chat-av-svg');if(svg)svg.style.display='none';
+  let img=el.querySelector('img');if(!img){img=document.createElement('img');el.appendChild(img);}img.src=src;
+}
+
+// Photos
+function uploadPhoto(i){currentPhotoIdx=i;document.getElementById('photo-input').click();}
+document.getElementById('photo-input').addEventListener('change',function(e){
+  const f=e.target.files[0];if(!f||currentPhotoIdx<0)return;
+  compressImage(f,400,0.8,function(d){setPhoto(currentPhotoIdx,d);localStorage.setItem('xsj_p'+currentPhotoIdx,d);});
+  this.value='';
+});
+function setPhoto(i,src){document.getElementById('photo'+i).innerHTML='<img src="'+src+'">';}
+function loadPhotos(){for(let i=0;i<3;i++){const d=localStorage.getItem('xsj_p'+i);if(d)setPhoto(i,d);}}
+
+// Anni card background
+function setAnniBg(src){
+  const area=document.getElementById('anni-img-area');
+  if(!area)return;
+  area.style.backgroundImage='url('+src+')';
+  area.style.backgroundSize='cover';
+  area.style.backgroundPosition='center';
+  // Hide the default SVG
+  const svg=area.querySelector('svg:first-child');
+  if(svg)svg.style.display='none';
+}
+document.getElementById('anni-bg-input').addEventListener('change',function(e){
+  const f=e.target.files[0];if(!f)return;
+  compressImage(f,600,0.8,function(d){setAnniBg(d);localStorage.setItem('xsj_anni_bg',d);});
+  this.value='';
+});
+
+// App overlay
+const APPS={
+  settings:{t:'设置',b:'<div style="display:flex;flex-direction:column;gap:8px;"><div class="app-row glass-card"><span style="font-size:14px;">深色模式</span><div class="app-toggle" onclick="this.classList.toggle(\'on\')"></div></div><div class="app-row glass-card"><span style="font-size:14px;">通知</span><div class="app-toggle on" onclick="this.classList.toggle(\'on\')"></div></div><div class="app-row glass-card"><span style="font-size:14px;">声音</span><div class="app-toggle on" onclick="this.classList.toggle(\'on\')"></div></div><div class="app-row glass-card" style="cursor:pointer;" onclick="document.getElementById(\'wp-lock-input\').click()"><span style="font-size:14px;">更换锁屏壁纸</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></div><div class="app-row glass-card" style="cursor:pointer;" onclick="document.getElementById(\'wp-main-input\').click()"><span style="font-size:14px;">更换主屏幕壁纸</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></div><div class="app-row glass-card"><span style="font-size:14px;">隐私</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></div><div class="app-row glass-card"><span style="font-size:14px;">存储</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></div><div class="app-row glass-card"><span style="font-size:14px;">关于</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></div></div>'},
+  worldbook:{t:'世界书',b:'<div class="glass-card" style="padding:20px;border-radius:18px;margin-bottom:16px;"><div style="font-size:15px;font-weight:500;margin-bottom:8px;">世界观设定</div><p style="font-size:13px;opacity:.6;line-height:1.7;">在这里编辑角色的世界观、背景故事。世界书帮助AI理解你的创作宇宙。</p></div><div class="glass-card" style="padding:16px;border-radius:18px;"><div style="font-size:13px;opacity:.4;">暂无条目</div></div>'},
+  memory:{t:'记忆',b:'<div class="glass-card" style="padding:20px;border-radius:18px;margin-bottom:12px;"><div style="font-size:15px;font-weight:500;margin-bottom:6px;">长期记忆</div><p style="font-size:13px;opacity:.6;line-height:1.7;">AI会自动记住重要信息。</p></div><div class="glass-card" style="padding:14px;border-radius:14px;margin-bottom:8px;"><div style="font-size:11px;opacity:.4;">记忆 #1</div><div style="font-size:13px;margin-top:4px;">用户喜欢简洁的对话风格</div></div><div class="glass-card" style="padding:14px;border-radius:14px;"><div style="font-size:11px;opacity:.4;">记忆 #2</div><div style="font-size:13px;margin-top:4px;">用户的时区是 UTC+8</div></div>'},
+  chat:{t:'Chat',b:'<div style="display:flex;flex-direction:column;gap:10px;"><div class="glass-card" style="padding:14px;border-radius:16px;display:flex;align-items:center;gap:12px;"><div style="width:40px;height:40px;border-radius:20px;background:var(--subtle);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/></svg></div><div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:500;">助手</div><div style="font-size:12px;opacity:.4;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">你好！有什么可以帮你的？</div></div><div style="font-size:10px;opacity:.3;flex-shrink:0;">刚刚</div></div><div class="glass-card" style="padding:14px;border-radius:16px;display:flex;align-items:center;gap:12px;"><div style="width:40px;height:40px;border-radius:20px;background:var(--subtle);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/></svg></div><div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:500;">创作伙伴</div><div style="font-size:12px;opacity:.4;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">上次的故事写得真好...</div></div><div style="font-size:10px;opacity:.3;flex-shrink:0;">3分钟</div></div></div>'},
+  forum:{t:'论坛',b:'<div class="glass-card" style="padding:16px;border-radius:16px;margin-bottom:12px;"><div style="font-size:14px;font-weight:500;">热门话题</div><div style="margin-top:10px;font-size:13px;opacity:.6;line-height:2;">• 新角色分享<br>• 创作心得交流<br>• 世界观讨论</div></div><div class="glass-card" style="padding:14px;border-radius:14px;"><div style="font-size:12px;opacity:.4;margin-bottom:8px;">最新帖子</div><div style="font-size:13px;line-height:2;">「如何让AI角色更有深度？」— 12回复<br>「分享我的城市世界观」— 8回复</div></div>'},
+  game:{t:'游戏',b:'<div style="text-align:center;padding:32px 0;"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="opacity:.2;margin:0 auto;display:block;"><rect x="2" y="6" width="20" height="12" rx="3"/><circle cx="8" cy="12" r="1.5"/><path d="M15 10l1 1 1-1m-1 1v2"/></svg><div style="font-size:16px;font-weight:500;margin-top:16px;">互动游戏</div><div style="font-size:12px;opacity:.4;margin-top:6px;">文字冒险、角色扮演</div></div><div class="glass-card" style="padding:14px;border-radius:14px;margin-bottom:8px;"><div style="font-size:13px;font-weight:500;">文字冒险</div></div><div class="glass-card" style="padding:14px;border-radius:14px;"><div style="font-size:13px;font-weight:500;">猜谜挑战</div></div>'},
+  beautify:{t:'美化',b:'<div class="glass-card" style="padding:18px;border-radius:16px;margin-bottom:16px;"><div style="font-size:15px;font-weight:500;margin-bottom:6px;">主题定制</div><p style="font-size:13px;opacity:.5;">自定义聊天界面、气泡样式和字体。</p></div><div style="display:flex;gap:10px;"><div class="glass-card" style="flex:1;padding:16px;border-radius:16px;text-align:center;"><div style="width:36px;height:36px;border-radius:18px;background:#000;margin:0 auto 6px;"></div><div style="font-size:11px;">深邃黑</div></div><div class="glass-card" style="flex:1;padding:16px;border-radius:16px;text-align:center;"><div style="width:36px;height:36px;border-radius:18px;background:#fff;border:1px solid rgba(0,0,0,.1);margin:0 auto 6px;"></div><div style="font-size:11px;">纯净白</div></div><div class="glass-card" style="flex:1;padding:16px;border-radius:16px;text-align:center;"><div style="width:36px;height:36px;border-radius:18px;background:linear-gradient(135deg,#ccc,#888);margin:0 auto 6px;"></div><div style="font-size:11px;">银灰调</div></div></div>'},
+  shop:{t:'商城',b:'<div class="glass-card" style="padding:18px;border-radius:16px;margin-bottom:16px;"><div style="font-size:15px;font-weight:500;">精选推荐</div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"><div class="glass-card" style="padding:16px;border-radius:16px;text-align:center;"><div style="width:40px;height:40px;border-radius:12px;background:var(--subtle);margin:0 auto 6px;display:flex;align-items:center;justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/></svg></div><div style="font-size:12px;font-weight:500;">角色包</div></div><div class="glass-card" style="padding:16px;border-radius:16px;text-align:center;"><div style="width:40px;height:40px;border-radius:12px;background:var(--subtle);margin:0 auto 6px;display:flex;align-items:center;justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div><div style="font-size:12px;font-weight:500;">插件</div></div></div>'},
+  view:{t:'查看',b:'<div class="glass-card" style="padding:18px;border-radius:16px;margin-bottom:12px;"><div style="font-size:15px;font-weight:500;margin-bottom:6px;">对话历史</div><p style="font-size:13px;opacity:.5;">查看和管理所有对话记录。</p></div><div class="glass-card" style="padding:12px 14px;border-radius:12px;margin-bottom:8px;display:flex;justify-content:space-between;"><span style="font-size:13px;">与「助手」的对话</span><span style="font-size:11px;opacity:.3;">今天</span></div><div class="glass-card" style="padding:12px 14px;border-radius:12px;margin-bottom:8px;display:flex;justify-content:space-between;"><span style="font-size:13px;">与「创作伙伴」的对话</span><span style="font-size:11px;opacity:.3;">昨天</span></div><div class="glass-card" style="padding:12px 14px;border-radius:12px;display:flex;justify-content:space-between;"><span style="font-size:13px;">群组讨论</span><span style="font-size:11px;opacity:.3;">3天前</span></div>'},
+  pet:{t:'宠物',b:'<div style="text-align:center;padding:28px 0;"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="opacity:.2;margin:0 auto;display:block;"><ellipse cx="7" cy="5" rx="2.5" ry="3"/><ellipse cx="17" cy="5" rx="2.5" ry="3"/><ellipse cx="4" cy="12" rx="2" ry="2.5"/><ellipse cx="20" cy="12" rx="2" ry="2.5"/><path d="M8 17c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4z"/></svg><div style="font-size:16px;font-weight:500;margin-top:14px;">我的宠物</div><div style="font-size:12px;opacity:.4;margin-top:6px;">领养AI宠物</div></div><div class="glass-card active-scale" style="padding:14px;border-radius:16px;text-align:center;cursor:pointer;"><div style="font-size:14px;font-weight:500;">开始领养</div></div>'},
+  ao3:{t:'AO3',b:'<div class="glass-card" style="padding:18px;border-radius:16px;margin-bottom:12px;"><div style="font-size:15px;font-weight:500;margin-bottom:6px;">作品库</div><p style="font-size:13px;opacity:.5;line-height:1.6;">浏览和管理你的所有故事。</p></div><div class="glass-card" style="padding:14px;border-radius:14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-size:13px;font-weight:500;">星辰之约</div><div style="font-size:11px;opacity:.4;margin-top:2px;">原创 · 12章</div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></div><div class="glass-card" style="padding:14px;border-radius:14px;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-size:13px;font-weight:500;">城市之光</div><div style="font-size:11px;opacity:.4;margin-top:2px;">同人 · 5章</div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></div>'},
+  search:{t:'搜索',b:'<div class="glass-card" style="padding:10px 14px;border-radius:16px;display:flex;align-items:center;gap:10px;margin-bottom:20px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg><input type="text" placeholder="搜索聊天、角色、设置..." style="border:none;background:none;outline:none;font-size:14px;width:100%;color:var(--text);font-family:inherit;"></div><div style="font-size:12px;opacity:.4;margin-bottom:10px;">最近搜索</div><div class="glass-card" style="padding:10px 14px;border-radius:12px;margin-bottom:6px;font-size:13px;">助手</div><div class="glass-card" style="padding:10px 14px;border-radius:12px;margin-bottom:6px;font-size:13px;">世界观设定</div><div class="glass-card" style="padding:10px 14px;border-radius:12px;font-size:13px;">创作伙伴</div>'}
+};
+function openApp(name){
+  const app=APPS[name];if(!app)return;
+  const ov=document.getElementById('app-overlay'),ct=document.getElementById('app-content');
+  ct.innerHTML='<div class="app-back" onclick="closeApp()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div><div class="app-title">'+app.t+'</div>'+app.b;
+  ov.style.display='block';requestAnimationFrame(()=>ov.classList.add('show'));
+}
+function closeApp(){const ov=document.getElementById('app-overlay');ov.classList.remove('show');setTimeout(()=>ov.style.display='none',250);}
+
+// ── Music Panel ──
+let isMusicPanelOpen = false;
+function toggleMusicPanel() {
+  isMusicPanelOpen = !isMusicPanelOpen;
+  const panel = document.getElementById('music-panel');
+  const disc = document.getElementById('music-disc');
+  if (isMusicPanelOpen) {
+    panel.classList.add('open');
+    requestAnimationFrame(() => panel.classList.add('animated'));
+    disc.classList.add('spinning');
+  } else {
+    panel.classList.remove('animated');
+    setTimeout(function(){ if (!isMusicPanelOpen) panel.classList.remove('open'); }, 200);
+    disc.classList.remove('spinning');
+  }
+}
+document.getElementById('music-disc-input').addEventListener('change', function(e) {
+  const f = e.target.files[0]; if (!f) return;
+  compressImage(f, 150, 0.8, function(src) {
+    const img = document.getElementById('music-disc-img');
+    const svg = document.getElementById('music-disc-svg');
+    img.src = src; img.style.display = 'block';
+    if (svg) svg.style.display = 'none';
+    localStorage.setItem('musicDiscImage', src);
+  });
+  this.value = '';
+});
+(function() {
+  const saved = localStorage.getItem('musicDiscImage');
+  if (saved) {
+    const img = document.getElementById('music-disc-img');
+    const svg = document.getElementById('music-disc-svg');
+    if (img) { img.src = saved; img.style.display = 'block'; }
+    if (svg) svg.style.display = 'none';
+  }
+})();
+</script>
+</body>
+</html>
